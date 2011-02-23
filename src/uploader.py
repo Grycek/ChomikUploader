@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/09/2010
+# Written: 23/02/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.1
+# Ver: 0.2
 
 from chomik import *
 import getpass
@@ -60,6 +60,9 @@ class Uploader(object):
 
     
     def __upload_aux(self, dirpath):
+        """
+        Uploaduje pliki z danego katalogu i jego podkatalogi.
+        """
         files = [ i for i in os.listdir(dirpath) if os.path.isfile( os.path.join(dirpath, i) ) ]
         files.sort()
         dirs  = [ i for i in os.listdir(dirpath) if os.path.isdir( os.path.join(dirpath, i) ) ]
@@ -70,7 +73,7 @@ class Uploader(object):
         
         for dr in dirs:
             address = self.chomik.cur_adr
-            self.__upload_dir(dirpath,dr)
+            self.__upload_dir_aux(dirpath,dr)
             self.chomik.cur_adr = address
 
 
@@ -104,6 +107,9 @@ class Uploader(object):
 
     
     def __upload_dir_aux(self, dirpath,dr):
+        """
+        Zmiana pozycji na chomiku i wyslanie katalogu
+        """
         try:
             changed = self.chomik.chdirs(dr)
         except Exception, e:
@@ -114,4 +120,4 @@ class Uploader(object):
         if changed != True:
             print "Nie udalo sie zmienic katalogu", dr
             return
-        self.__updir_aux( os.path.join(dirpath, dr) )        
+        self.__upload_aux( os.path.join(dirpath, dr) )        

@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/09/2010
+# Written: 23/02/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.1
+# Ver: 0.2
 
 
 import urllib2, urllib
@@ -132,8 +132,8 @@ class Chomik(object):
             self.cur_adr += '/' + to_chomik_url(directory)
             return True
         else:
-            print 'Returned adr','\n', return_adr,'\nExpected adr:', (self.cur_adr + '/' + to_chomik_url(directory))
-            print return_adr.lower() == (self.cur_adr + '/' + to_chomik_url(directory)).lower(), '\n'
+            print 'Returned adr:\n', return_adr,'\nExpected adr:\n', (self.cur_adr + '/' + to_chomik_url(directory))
+            #print return_adr.lower() == (self.cur_adr + '/' + to_chomik_url(directory)).lower(), '\n'
             return False
 
     
@@ -153,6 +153,7 @@ class Chomik(object):
         """
         Tworzenie katalogu
         """
+        print "Creating", dirname, "directory"
         request   = urllib2.Request(self.cur_adr )
         response  = self.opener.open(request, timeout = glob_timeout)
         tekst     = response.read()
@@ -171,8 +172,10 @@ class Chomik(object):
         response.close()
         
         if tekst.find('Nowy folder zosta') > 0:
+            print "Creation success\n"
             return True
         else:
+            print "Creation fail\n"
             return False
 
 

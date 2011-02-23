@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/09/2010
+# Written: 23/02/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.1
+# Ver: 0.2
 
 import uploader   
 import sys
@@ -25,7 +25,8 @@ def usage():
     print '-p,--password\t\t haslo do chomika. Przyklad:',
     print 'python', sys.argv[0], '-l nazwa_chomika -p haslo -u "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty/dokument1.txt"'
     
-if __name__ == '__main__':
+#if __name__ == '__main__':
+if True:
     try:
         opts, args = getopt.getopt(sys.argv[1:], 'hrul:p:', ['help','recursive', 'upload', 'login', 'password'])
     except Exception, e:
@@ -49,9 +50,9 @@ if __name__ == '__main__':
     for opt, arg in opts:
         if opt in ('-r', '--recursive'):
             chomik_path, dirpath = args
-            u = Uploader(login, password)
+            u = uploader.Uploader(login, password)
             u.upload_dir(chomik_path, dirpath)
         elif opt in ('-u', '--upload'):
             chomik_path, filepath = args
-            u = Uploader(login, password)
+            u = uploader.Uploader(login, password)
             u.upload_file(chomik_path, filepath)
