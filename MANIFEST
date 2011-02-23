@@ -1,0 +1,8 @@
+README
+chomik
+setup.py
+src/__init__.py
+src/main.py
+src/uploader.py
+src/chomik.py
+src/progress.py
