@@ -198,12 +198,17 @@ class Chomik(object):
         #Wejdz na podstrone uploadowania pliku (nacisniecie na przycisk dodaj nowy plik)
         request = urllib2.Request('http://chomikuj.pl/ChomikUploadingFile.aspx?id={0}&sid={1}&tk={2}&t={3}'.format(ChomikID, SubfolderId, UploadToken, TokenTime) )
 
-        response  = self.opener.open(request, timeout = glob_timeout)
+        response         = self.opener.open(request, timeout = glob_timeout)
         #zapamietaj adres pod ktory zostalismy skierowani (znajduje sie tam m.in. nr serwera)
-        tmp_url = response.geturl()
-        _, host, urlpath =  re.findall('(http://(s\d*.chomikuj.pl)(/[^ ]*))', tmp_url)[0]
-        tekst   = response.read()
-        viewstate =  re.findall('id=\"__VIEWSTATE\" value=\"([^\"]*)\"', tekst)[0]
+        tmp_url          = response.geturl()
+        _, host, urlpath = re.findall('(http://(s\d*.chomikuj.pl)(/[^ ]*))', tmp_url)[0]
+        tekst            = response.read()
+        viewstate        = re.findall('id=\"__VIEWSTATE\" value=\"([^\"]*)\"', tekst)[0]
+        postBackIDs      = re.findall('/NeatUpload/Progress1.aspx\?postBackID=([^&]*)&refresher', tekst)
+        if postBackIDs == []:
+            postBackID = None
+        else:
+            postBackID = postBackIDs[0]
         response.close()
         
         size = os.path.getsize(filepath)
@@ -211,7 +216,7 @@ class Chomik(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
         sock.connect((host, 80))
-        header, contenttail =  self.__create_header(viewstate, SubfolderId, UploadToken, TokenTime, ChomikID, filename, filepath, host, urlpath, tmp_url, size)  
+        header, contenttail =  self.__create_header(viewstate, SubfolderId, UploadToken, TokenTime, ChomikID, filename, filepath, host, urlpath, tmp_url, size, postBackID)  
         sock.send(header)
         
         f = open(filepath)
@@ -234,9 +239,9 @@ class Chomik(object):
         
         buff = 0
         result = ''
-        while buff < 4000:
-            tmp = sock.recv(640) 
-            if tmp == '':
+        while buff < 12000:
+            tmp = sock.recv(6400) 
+            if tmp == '' or '</html>' in result or ':-)' in result:
                 break
             result += tmp
             buff   += len(tmp)
@@ -248,7 +253,11 @@ class Chomik(object):
 
 
     
-    def __create_header(self, viewstate, SubfolderId, UploadToken, TokenTime, ChomikID, filename, filepath, host, urlpath, tmp_url, size):
+    def __create_header(self, viewstate, SubfolderId, UploadToken, TokenTime, ChomikID, filename, filepath, host, urlpath, tmp_url, size, postBackID):
+        if postBackID == None:
+            postBackInfo = ''
+        else:
+            postBackInfo = 'NeatUpload_' + postBackID + '-'
         boundary      = "-----------------------------24725123512491151811399248393"
         contentheader  = boundary + '\r\nContent-Disposition: form-data; name="__EVENTTARGET"\r\n\r\nUploadButton\r\n'
         contentheader += boundary + '\r\nContent-Disposition: form-data; name="__EVENTARGUMENT"\r\n\r\n\r\n'
@@ -258,14 +267,16 @@ class Chomik(object):
         contentheader += boundary + '\r\nContent-Disposition: form-data; name="Token"\r\n\r\n{0}\r\n'.format(UploadToken)
         contentheader += boundary + '\r\nContent-Disposition: form-data; name="TokenTime"\r\n\r\n{0}\r\n'.format(TokenTime)
         contentheader += boundary + '\r\nContent-Disposition: form-data; name="ChomikId"\r\n\r\n{0}\r\n'.format(ChomikID)
-        contentheader += boundary + '\r\nContent-Disposition: form-data; name="FileSample"; filename=""\r\nContent-Type: application/octet-stream\r\n\r\n\r\n'
+        contentheader += boundary + '\r\nContent-Disposition: form-data; name="{0}FileSample"; filename=""\r\nContent-Type: application/octet-stream\r\n\r\n\r\n'.format(postBackInfo)
         contentheader += boundary + '\r\nContent-Disposition: form-data; name="FileSampleDescription"\r\n\r\n\r\n'
-        contentheader += boundary + '\r\nContent-Disposition: form-data; name="File1"; filename="{0}"\r\n'.format(filename) 
+        contentheader += boundary + '\r\nContent-Disposition: form-data; name="{1}File1"; filename="{0}"\r\n'.format(filename,postBackInfo) 
         mimetp, _      = mimetypes.guess_type(filepath)
         if mimetp != None:
-            contentheader += boundary + 'Content-Type: {0}\r\n\r\n'.format(mimetp)
+            #contentheader += boundary + 'Content-Type: {0}\r\n\r\n'.format(mimetp)
+            contentheader += 'Content-Type: {0}\r\n\r\n'.format(mimetp)
         else:
-            contentheader += boundary + 'Content-Type: text/plain\r\n\r\n'
+            #contentheader += boundary + 'Content-Type: text/plain\r\n\r\n'
+            contentheader += 'Content-Type: text/plain\r\n\r\n'
         
         contenttail   = '\r\n' + boundary + '\r\nContent-Disposition: form-data; name="File1Description"\r\n\r\n\r\n'
         contenttail  += '\r\n' + boundary + '\r\nContent-Disposition: form-data; name="FileUploader"\r\n\r\n\r\n'
