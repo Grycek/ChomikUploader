@@ -19,7 +19,7 @@ class Uploader(object):
         if user == None:
             user     = raw_input('Podaj nazwe uzytkownika:\n')
         if password == None:
-            password = getpass.getpass('Podaj haslo:\n')
+            password = getpass.getpass('Podaj haslo:\r\n')
         print 'Logowanie'
         if not self.chomik.login(user, password):
             print 'Bledny login lub haslo'
@@ -52,6 +52,7 @@ class Uploader(object):
             f.close()
         f = open(self.uploaded_file, 'r')
         self.uploaded = f.read().split('\n')
+        self.uploaded = [i.strip() for i in self.uploaded]
         f.close()
         self.uploaded = set(self.uploaded)
         self.chomik.chdirs(chomikpath)
@@ -95,13 +96,13 @@ class Uploader(object):
             result  = False
         if  result == True:
             f = open(self.uploaded_file,'a')
-            f.write(filepath + '\n')
+            f.write(filepath + '\r\n')
             f.close()
             print 'Zakonczono uploadowanie\n'
         else:
             print 'Blad. Plik {0} nie zostal wyslany\n'.format(filepath)
             f = open(self.notuploaded_file,'a')
-            f.write(filepath + '\n')
+            f.write(filepath + '\r\n')
             f.close()
 
 

@@ -110,12 +110,15 @@ class ProgressMeter(object):
 
     def refresh(self, **kw):
         # Clear line
-        sys.stdout.write(self.ESC + '[2K')
-        self.reset_cursor()
+        if sys.platform.startswith('win'):
+            sys.stdout.write('\r')
+        else:
+            sys.stdout.write(self.ESC + '[2K')
+            self.reset_cursor()
         sys.stdout.write(self.get_meter(**kw))
         # Are we finished?
         if self.count >= self.total:
-            sys.stdout.write('\n')
+            sys.stdout.write('\r\n')
         sys.stdout.flush()
         # Timestamp
         self.last_refresh = time.time()

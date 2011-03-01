@@ -219,7 +219,7 @@ class Chomik(object):
         header, contenttail =  self.__create_header(viewstate, SubfolderId, UploadToken, TokenTime, ChomikID, filename, filepath, host, urlpath, tmp_url, size, postBackID)  
         sock.send(header)
         
-        f = open(filepath)
+        f = open(filepath,'rb')
         bufferlen = 0
         msglen    = 0
         pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
@@ -240,7 +240,7 @@ class Chomik(object):
         buff = 0
         result = ''
         while buff < 12000:
-            tmp = sock.recv(6400) 
+            tmp = sock.recv(640) 
             if tmp == '' or '</html>' in result or ':-)' in result:
                 break
             result += tmp
