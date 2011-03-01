@@ -2,7 +2,7 @@ from distutils.core import setup
 
 
 setup(name='chomikUploader',
-      version='0.2',
+      version='0.2.1',
       author='adam_gr',
       author_email='adam_gr [at] gazeta.pl',
       description='Uploading files on chomikuj.pl',

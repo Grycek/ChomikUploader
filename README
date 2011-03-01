@@ -1,7 +1,8 @@
 INSTALACJA:
-Potrzebny jest python2.* (najlepiej 2.6 lub 2.7)
+Potrzebny jest python2.* (najlepiej 2.6 lub 2.7) oraz system Linux
 Aby zainstalowac skrypt odpalamy polecenie (z uprawnieniami administratora):
 python setup.py install
+W przypadku systemu Windows nie instalujemy skryptu. Zamiast polecenia "chomik" wpisujemy "python main.py" w katalogu src.
 
 
 PRZYKŁAD UŻYCIA:

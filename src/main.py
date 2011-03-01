@@ -34,7 +34,10 @@ if True:
         print e
         usage()
         sys.exit(2)
-        
+    
+    if opts == []:
+        usage()
+    
     login    = None
     password = None
 
