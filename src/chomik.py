@@ -22,7 +22,7 @@ import time
 glob_timeout = 240
 
 #viewstate, user, pass
-httpdata_logon = """__EVENTTARGET=&__EVENTARGUMENT=&__VIEWSTATE={0}&PageCmd=&PageArg=&ctl00%24LoginTop%24LoginChomikName={1}&ctl00%24LoginTop%24LoginChomikPassword={2}&ctl00%24LoginTop%24LoginButton.x=3&ctl00%24LoginTop%24LoginButton.y=12&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikLog%24LoginChomikName=&ctl00%24CT%24ChomikLog%24LoginChomikPassword="""
+httpdata_logon = """__EVENTTARGET=&__EVENTARGUMENT=&__VIEWSTATE={0}&PageCmd=&PageArg=&ctl00%24LoginTop%24LoginChomikName={1}&ctl00%24LoginTop%24LoginChomikPassword={2}&ctl00%24LoginTop%24LoginRemember=on&ctl00%24LoginTop%24LoginButton.x=3&ctl00%24LoginTop%24LoginButton.y=12&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikLog%24LoginChomikName=&ctl00%24CT%24ChomikLog%24LoginChomikPassword="""
 
 httpdata_mkdir = """ctl00%24SM=ctl00%24CT%24NewFolderW%24NFUp%7Cctl00%24CT%24NewFolderW%24NewFolderButton&PageCmd=&PageArg=undefined&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikID={0}&ctl00%24CT%24TW%24TreeExpandLog=20188%7C&ChomikSubfolderId={1}&ctl00%24CT%24FW%24SubfolderID={2}&FVSortType=1&FVSortDir=1&FVSortChange=&FVPage=0&ctl00%24CT%24FrW%24FrPage=1&FrGroupId=0&FrRefPage=&FrGrpPage=&FrGrpName=&ctl00%24CT%24NewFolderW%24NewFolderTextBox={3}&ctl00%24CT%24NewFolderW%24AFDescr=&ctl00%24CT%24NewFolderW%24AFPass=&__EVENTTARGET=ctl00%24CT%24NewFolderW%24NewFolderButton&__EVENTARGUMENT=&__VIEWSTATE={4}&__ASYNCPOST=true&"""
 
@@ -36,6 +36,25 @@ def to_chomik_url(adr):
 def from_chomik(adr):
     #changes from chomikuj.pl adres format
     return urllib2.unquote(adr.replace('+', '%20').replace('*','%'))
+
+def change_coding(text):
+    try:
+        if sys.platform.startswith('win'):
+          text = text.decode('cp1250').encode('utf-8')
+    except Exception, e:
+        print e
+    return text
+
+def print_coding(text):
+    if sys.platform.startswith('win'):
+        try:
+            text = text.decode('utf-8')
+        except Exception:
+            try:
+                text = text.decode('cp1250')
+            except Exception, e:
+                pass
+    return text
     
 
 class Chomik(object):
@@ -94,7 +113,7 @@ class Chomik(object):
             if changed != True:
                 self.mkdir(dir.replace('/',''))
                 if self.chdir(dir.replace('/','')) != True:
-                    print "Nie zmieniono katalogu :", '\n', self.cur_adr,'\n', dir,'\n'
+                    print "Nie zmieniono katalogu :", '\n', self.cur_adr ,'\n', dir,'\n'
                     return False
         return True
         
@@ -105,6 +124,7 @@ class Chomik(object):
         """
         Zmien katalog (zmiana o jeden poziom)
         """
+        directory = change_coding(directory)
         if directory == '..':
             return self.__chdir_up()
         
@@ -124,7 +144,7 @@ class Chomik(object):
             except Exception:
                 return_adr = re.findall('<a href="([^"]*)" id="ctl00_CT_FW_WWW' ,tekst)[0]
         except Exception:
-            print "Faild to change dir {0}".format(directory)
+            print "Faild to change dir", print_coding(directory)
             return False
         
         if return_adr.lower() == \
@@ -153,7 +173,8 @@ class Chomik(object):
         """
         Tworzenie katalogu
         """
-        print "Creating", dirname, "directory"
+        dirname = change_coding(dirname)
+        print "Creating", print_coding(dirname), "directory"
         request   = urllib2.Request(self.cur_adr )
         response  = self.opener.open(request, timeout = glob_timeout)
         tekst     = response.read()
@@ -186,6 +207,7 @@ class Chomik(object):
         Wysylanie pliku znajdujacego sie pod 'filepath' i nazwanie go 'filename'
         #TODO: Opis i podpis
         """
+        filename  = change_coding(filename)
         request   = urllib2.Request(self.cur_adr)
         response  = self.opener.open(request, timeout = glob_timeout)
         tekst     = response.read()

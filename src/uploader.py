@@ -11,6 +11,14 @@
 from chomik import *
 import getpass
 
+def print_coding(text):
+    try:
+        if sys.platform.startswith('win'):
+          text = text.decode('cp1250')
+    except Exception:
+        pass
+    return text
+
 class Uploader(object):
     def __init__(self, user = None, password = None):
         self.notuploaded_file = 'notuploaded.txt'
@@ -87,7 +95,7 @@ class Uploader(object):
         filepath = os.path.join(dirpath, fil)
         if filepath in self.uploaded:
             return
-        print 'Uploadowanie pliku: {0}'.format( filepath)
+        print 'Uploadowanie pliku:', print_coding(filepath)
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except Exception, e:
@@ -100,7 +108,7 @@ class Uploader(object):
             f.close()
             print 'Zakonczono uploadowanie\n'
         else:
-            print 'Blad. Plik {0} nie zostal wyslany\n'.format(filepath)
+            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
             f = open(self.notuploaded_file,'a')
             f.write(filepath + '\r\n')
             f.close()
@@ -114,11 +122,11 @@ class Uploader(object):
         try:
             changed = self.chomik.chdirs(dr)
         except Exception, e:
-            print 'Blad. Nie wyslano katalogu: ' + os.path.join(dirpath, dr)
-            time.sleep(600)
+            print 'Blad. Nie wyslano katalogu: ', print_coding( os.path.join(dirpath, dr) )
             print e
+            time.sleep(60)
             return
         if changed != True:
-            print "Nie udalo sie zmienic katalogu", dr
+            print "Nie udalo sie zmienic katalogu", print_coding( dr )
             return
         self.__upload_aux( os.path.join(dirpath, dr) )        
