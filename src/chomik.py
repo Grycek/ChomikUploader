@@ -24,7 +24,10 @@ glob_timeout = 240
 #viewstate, user, pass
 httpdata_logon = """__EVENTTARGET=&__EVENTARGUMENT=&__VIEWSTATE={0}&PageCmd=&PageArg=&ctl00%24LoginTop%24LoginChomikName={1}&ctl00%24LoginTop%24LoginChomikPassword={2}&ctl00%24LoginTop%24LoginRemember=on&ctl00%24LoginTop%24LoginButton.x=3&ctl00%24LoginTop%24LoginButton.y=12&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikLog%24LoginChomikName=&ctl00%24CT%24ChomikLog%24LoginChomikPassword="""
 
-httpdata_mkdir = """ctl00%24SM=ctl00%24CT%24NewFolderW%24NFUp%7Cctl00%24CT%24NewFolderW%24NewFolderButton&PageCmd=&PageArg=undefined&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikID={0}&ctl00%24CT%24TW%24TreeExpandLog=20188%7C&ChomikSubfolderId={1}&ctl00%24CT%24FW%24SubfolderID={2}&FVSortType=1&FVSortDir=1&FVSortChange=&FVPage=0&ctl00%24CT%24FrW%24FrPage=1&FrGroupId=0&FrRefPage=&FrGrpPage=&FrGrpName=&ctl00%24CT%24NewFolderW%24NewFolderTextBox={3}&ctl00%24CT%24NewFolderW%24AFDescr=&ctl00%24CT%24NewFolderW%24AFPass=&__EVENTTARGET=ctl00%24CT%24NewFolderW%24NewFolderButton&__EVENTARGUMENT=&__VIEWSTATE={4}&__ASYNCPOST=true&"""
+#httpdata_mkdir = """ctl00%24SM=ctl00%24CT%24NewFolderW%24NFUp%7Cctl00%24CT%24NewFolderW%24NewFolderButton&PageCmd=&PageArg=undefined&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikID={0}&ctl00%24CT%24TW%24TreeExpandLog=20188%7C&ChomikSubfolderId={1}&ctl00%24CT%24FW%24SubfolderID={2}&FVSortType=1&FVSortDir=1&FVSortChange=&FVPage=0&ctl00%24CT%24FrW%24FrPage=1&FrGroupId=0&FrRefPage=&FrGrpPage=&FrGrpName=&ctl00%24CT%24NewFolderW%24NewFolderTextBox={3}&ctl00%24CT%24NewFolderW%24AFDescr=&ctl00%24CT%24NewFolderW%24AFPass=&__EVENTTARGET=ctl00%24CT%24NewFolderW%24NewFolderButton&__EVENTARGUMENT=&__VIEWSTATE={4}&__ASYNCPOST=true&"""
+
+#( ChomikID, ChomikSubfolderId, SubfolderId, urllib2.quote(dirname), viewstate)
+httpdata_mkdir = """IdFolder={2}&IdChomik={0}&FolderName={3}&GalleryMode=false&AdultContent=false&Description=&Password="""
 
 #ChomikID, ChomikSubfolderId, SubfolderId, FolderAddress, viewstate
 httpdata_rmdir = """ctl00%24SM=ctl00%24SM%7Cctl00%24CT%24TW%24DynamicFolderLink&PageCmd=&PageArg=undefined&ctl00%24SearchInputBox=&ctl00%24SearchFileBox=&ctl00%24SearchType=all&SType=0&ctl00%24CT%24ChomikID={0}&treeExpandLog=0%7C5762328%7C31%7C32%7C34%7C&ChomikSubfolderId={1}&ctl00%24CT%24FW%24SubfolderID={2}&FVSortType=1&FVSortDir=1&FVSortChange=&FVPage=0&ctl00%24CT%24FW%24inpFolderAddress={3}&ctl00%24CT%24FrW%24FrPage=0&FrGroupId=0&FrRefPage=&FrGrpPage=&FrGrpName=&__EVENTTARGET=ctl00%24CT%24TW%24DynamicFolderLink&__EVENTARGUMENT=&__VIEWSTATE={4}&__ASYNCPOST=true&"""
@@ -185,7 +188,8 @@ class Chomik(object):
         
         global httpdata_mkdir
         postdata  = httpdata_mkdir.format( ChomikID, ChomikSubfolderId, SubfolderId, urllib2.quote(dirname), viewstate)
-        request   = urllib2.Request(self.cur_adr )
+        #request   = urllib2.Request(self.cur_adr )
+        request   = urllib2.Request( "http://chomikuj.pl/Chomik/FolderOptions/NewFolderAction" )
         request.add_data(postdata)
         
         response  = self.opener.open(request)    
