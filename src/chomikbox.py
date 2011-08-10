@@ -86,6 +86,8 @@ class Chomik(object):
             ses_id, chomik_id = re.findall('sess_id="([^"]*)" chomik_id="(\d*)"' ,resp)[0]
             self.ses_id    = ses_id
             self.chomik_id = chomik_id
+            #pobieranie listy folderow
+            self.get_dir_list()
         except IndexError, e:
             #TODO: ukryc wyswietlanie bledow
             print "Blad"
@@ -152,37 +154,29 @@ class Chomik(object):
         fold      = []
         folder_id = 0
         #pobieranie listy folderow
-        self.get_dir_list()
-        dom     = self.folders_dom
-        #zmiana folderu
-        for f in folders:
-            if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
-                for i in dom.childNodes:
-                    if to_unicode(f) == i.getAttribute("name"):
-                        dom            = i
-                        #
-                        folder_id = int(i.getAttribute("id"))
-                        fold.append(f)
-                        #print folder_id, f
-            else:
-                #TODO - utworz folder
-                self.mkdir(f, folder_id)
-                #przejdz do niego
-                result, dom, folder_id = self.__access_node(fold + [f])
-                #jezeli nie udalo sie ani utworzyc ani przejsc, to zwroc False
-                if result == False:
-                    return False
-                else:
-                    fold.append(f)
-        self.cur_fold  = fold
+        result, dom, folder_id = self.__access_node(folders)
+        if result == True:
+            self.cur_fold  = folders
+            self.folder_id = folder_id
+        else:
+            result, dom, folder_id = self.__create_nodes(folders)
+            if result == False:
+                return False
+        self.cur_fold  = folders
         self.folder_id = folder_id
         return True
     
     
     def __access_node(self, folders_list):
-        self.get_dir_list()
-        dom  = self.folders_dom
-        fold = []
+        """
+        Odwiedza kolejne wezly drzewa xmlowego wypisane na liscie folder_list.
+        Jezeli jakiego wezla nie ma, to zwracany jest (False,None,None).
+        JEzeli wszystkie wezly istnieja, to zwracane jest 
+        (True, poddrzewo ostatniego wezla na liscie, folder_id ostatniego wezla na liscie)
+        """
+        dom       = self.folders_dom
+        fold      = []
+        folder_id = 0
         for f in folders_list:
             if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
                 for i in dom.childNodes:
@@ -192,7 +186,33 @@ class Chomik(object):
             else:
                 return (False, None, None)
         return (True,dom, folder_id)
-        
+
+
+    
+    def __create_nodes(self, folder_list):
+        folder_id = 0
+        fold      = []
+        self.get_dir_list()
+        dom       = self.folders_dom
+        for f in folder_list:
+            if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
+                for i in dom.childNodes:
+                    if to_unicode(f) == i.getAttribute("name"):
+                        dom            = i
+                        #
+                        folder_id = int(i.getAttribute("id"))
+                        fold.append(f)
+                        #print folder_id, f
+            else:
+                self.mkdir(f, folder_id)
+                self.get_dir_list()
+                result, dom, folder_id = self.__access_node(fold + [f])
+                #jezeli nie udalo sie ani utworzyc ani przejsc, to zwroc False
+                if result == False:
+                    return False
+                else:
+                    fold.append(f)
+        return (True,dom, folder_id)
     
     
     def mkdir(self, dirname, folder_id = None):
@@ -320,20 +340,3 @@ class Chomik(object):
         header += contentheader
         
         return header, contenttail
-        
-        
-            
-
-        
-
-
-if __name__ == "__main__":
-    c = Chomik()
-    c.login("tmp_chomik1", "haslo1234")
-    print "Logged"
-    c.get_dir_list()
-    c.chdirs("katalog1/katalog2/katalog3")
-    c.upload("chomik.py", "ąśćź.txt")
-    #c.mkdir("!@#$%^&I(O(()_+_.)).")
-    #c.chdirs("../katalog2/katalog3/tmp_dir2")
-    #print u"śćąż" in  [i.getAttribute("name") for i in c.folders.childNodes]

@@ -15,7 +15,7 @@ import getopt
 ######################################################################################    
 def usage():
     print 'Użycie programu:'
-    print 'python', sys.argv[0], '[-h|--help] [-r|--recursive katalog_w_chomiku katalog_na_dysku] [-u|--upload katalog_w_chomiku sciezka_do_pliku]\n'
+    print 'python', sys.argv[0], '[-h|--help]  [-l|--login nazwa_chomika] [-p|--password haslo chomika] [-r|--recursive katalog_w_chomiku katalog_na_dysku] [-u|--upload katalog_w_chomiku sciezka_do_pliku]\n'
     print '-h,--help\t\t pokazuje pomoc programu'
     print '-r,--recursive\t\t wysyla zawartosc katalogu (oraz wszystkich podkatalogow) na chomika do wskazanego katalogu. Na chomiku tworzona jest cala struktura podkatalogow. Przykład:',
     print 'python', sys.argv[0], '-r "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty"'
@@ -49,13 +49,16 @@ if True:
             login = arg
         elif opt in ('-p', '--password'):
             password = arg
-                    
-    for opt, arg in opts:
-        if opt in ('-r', '--recursive'):
-            chomik_path, dirpath = args
-            u = uploader.Uploader(login, password)
-            u.upload_dir(chomik_path, dirpath)
-        elif opt in ('-u', '--upload'):
-            chomik_path, filepath = args
-            u = uploader.Uploader(login, password)
-            u.upload_file(chomik_path, filepath)
+    try:
+        for opt, arg in opts:
+            if opt in ('-r', '--recursive'):
+                chomik_path, dirpath = args
+                u = uploader.Uploader(login, password)
+                u.upload_dir(chomik_path, dirpath)
+            elif opt in ('-u', '--upload'):
+                chomik_path, filepath = args
+                u = uploader.Uploader(login, password)
+                u.upload_file(chomik_path, filepath)
+    except ValueError, e:
+        print e
+        print "Blad: Musisz podac zarowno sciezke na chomiku, jak i na dysku. Ktoras z tych sciezek opusciles"

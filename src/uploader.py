@@ -8,7 +8,8 @@
 #
 # Ver: 0.2
 
-from chomik import *
+#from chomik import *
+from chomikbox import *
 import getpass
 
 def print_coding(text):
@@ -63,7 +64,9 @@ class Uploader(object):
         self.uploaded = [i.strip() for i in self.uploaded]
         f.close()
         self.uploaded = set(self.uploaded)
-        self.chomik.chdirs(chomikpath)
+        if not self.chomik.chdirs(chomikpath):
+            print 'Nie udalo sie zmienic katalogu w chomiku', chomikpath
+            sys.exit(1)
         self.__upload_aux(dirpath)
 
 
@@ -81,9 +84,11 @@ class Uploader(object):
             self.__upload_file_aux(fil, dirpath)
         
         for dr in dirs:
-            address = self.chomik.cur_adr
+            #address = self.chomik.cur_adr
+            address = self.chomik.cur_adr()
             self.__upload_dir_aux(dirpath,dr)
-            self.chomik.cur_adr = address
+            self.chomik.cur_adr(address)
+            #self.chomik.cur_adr = address
 
 
     
