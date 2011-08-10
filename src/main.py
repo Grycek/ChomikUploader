@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 23/02/2011
+# Written: 08/08/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.2
+# Ver: 0.3
 
 import uploader   
 import sys
