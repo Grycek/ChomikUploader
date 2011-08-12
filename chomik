@@ -1,4 +1,7 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*- 
 
-import chomikuploader.main
+try:
+    import chomikuploader.main
+except ImportError, e:
+    import src.main
