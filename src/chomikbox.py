@@ -54,23 +54,6 @@ def print_coding(text):
                 pass
     return text
 
-##########################################################################################
-"""
-class loginDecorator(object):
-
-    def __init__(self, f):
-        self.f      = f
-        #self.chomik = chomik
-
-    def __call__(self, *args):
-        print "Entering", self.f.__name__
-        print self.f.__class__
-        #if self.chomik.relogin() == False:
-        #    return False
-        #else:
-        return self.f(*args)
-        print "Exited", self.f.__name__
-"""
 
 ##########################################################################################
 #TODO: zmienic cos z kodowaniem
@@ -85,6 +68,7 @@ class Chomik(object):
         self.cur_fold      = []
         self.user          = ''
         self.password      = ''
+
 
         
     def login(self, user, password):
@@ -107,7 +91,8 @@ class Chomik(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
         sock.connect( (login_ip, login_port) )
-        sock.send( """GET /auth/?name={0}&pass={1}&v=3& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""".format(self.user,password) )
+        sock.send("""GET /auth/?name=""" + self.user + """&pass=""" + password + """&v=3 HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""" )
+        #sock.send( """GET /auth/?name={0}&pass={1}&v=3& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""".format(self.user,password) )
         resp = sock.recv(1024)
         sock.close()
         try:
@@ -193,6 +178,7 @@ class Chomik(object):
         self.folder_id = folder_id
         return True
     
+
     
     def __access_node(self, folders_list):
         """
@@ -279,6 +265,17 @@ class Chomik(object):
 
 
     def upload(self, filepath, filename):
+    	try:
+            return self.__upload(filepath, filename)
+            #TODO: nie wiem jeszcze jakie wyjatki tu lapac
+            #powinny tu byc lapane bledy, ktore wystapily podczas wysylania, aby
+            #zapisac do pliku informacje do wznowienia wysylania
+        except Exception, e:
+        	raise e
+
+
+    
+    def __upload(self, filepath, filename):
         """
         Wysylanie pliku znajdujacego sie pod 'filepath' i nazwanie go 'filename'
         #TODO: Opis i podpis
@@ -303,9 +300,9 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        #print resp
+        print resp
         try:
-            token, stamp, server, port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
+            self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
         except IndexError, e:
             #FIXME
             print "Blad(pobieranie informacji z chomika):", e
@@ -314,25 +311,20 @@ class Chomik(object):
         
         #Tworzenie naglowka
         size = os.path.getsize(filepath)
-        header, contenttail =  self.__create_header(server, port, token, stamp, filename, size)  
+        header, contenttail =  self.__create_header(self.server, self.port, self.token, self.stamp, filename, size)  
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (server,int(port) ) )
+        sock.connect( (self.server, int(self.port) ) )
         sock.send(header)
         
         f = open(filepath,'rb')
-        bufferlen = 0
-        msglen    = 0
         pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
         while True:
             chunk = f.read(1024)
             if not chunk:
                 break
             sock.send(chunk)
-            bufferlen += len(chunk)
-            pere = float(bufferlen) / float(size) * 100
-            rnd = round(pere, 1)
             pb.update(len(chunk))
         
         f.close()        
@@ -358,7 +350,7 @@ class Chomik(object):
     
     
     
-    def __create_header(self, server, port, token, stamp, filename, size):
+    def __create_header(self, server, port, token, stamp, filename, size, resume_from = 0):
         #FIXME: - cos krotki ten boundary
         boundary = "--!CHB" + str(int(time.time()))
         
@@ -366,6 +358,7 @@ class Chomik(object):
         contentheader += boundary + '\r\nname="folder_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.folder_id)
         contentheader += boundary + '\r\nname="key"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(token)
         contentheader += boundary + '\r\nname="time"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(stamp)
+        contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
         contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
         
         #FIXME - czy contenttail zaczyna sie od "\r\n"
@@ -382,3 +375,90 @@ class Chomik(object):
         header += contentheader
         
         return header, contenttail
+    
+    
+#####################################################    
+    def resume(self, filepath, filename, folder_id, chomik_id, token, server, port, stamp):
+    	"""
+    	Wznawianie uploadowania pliku filepath o nazwie filename o danych: folder_id, chomik_id, token, server, port, stamp
+    	"""
+        self.relogin()
+        #Pobieranie informacji o serwerze
+        filename     = change_coding(filename)
+        filename_len = len(filename)
+        #print filename, filename_len
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(glob_timeout)
+        sock.connect( (server, port) )
+        tmp = """GET /resume/check/?key={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: {1}:{2}\r\n\r\n""".format(token, server, port)
+        print tmp
+        sock.send( tmp )
+        #Odbieranie odpowiedzi
+        resp = ""
+        while True:
+            tmp = sock.recv(640) 
+            if tmp ==  '':
+                break
+            resp   += tmp
+        resp += tmp
+        sock.close()
+        print resp
+        try:
+            filesize_sent = int(re.findall( """<resp file_size="([^"]*)" skipThumbnails="[^"]*" res="1"/>""", resp)[0])
+        except IndexError, e:
+            print "Nie mozna bylo wznowic pobierania"
+            return False
+        
+        #Tworzenie naglowka
+        size  = os.path.getsize(filepath)
+        header, contenttail =  self.__create_header(server, port, token, stamp, filename, (size - filesize_sent), resume_from = filesize_sent)  
+        
+        print header
+        print contenttail
+        
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(glob_timeout)
+        sock.connect( (server,int(port) ) )
+        sock.send(header)
+
+        f = open(filepath,'rb')
+        f.seek(filesize_sent)
+        pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
+        pb.update(filesize_sent)
+        while True:
+            chunk = f.read(1024)
+            if not chunk:
+                break
+            sock.send(chunk)
+            pb.update(len(chunk))
+            
+        f.close()        
+        #print 'Sending tail'
+        sock.send(contenttail)
+        
+        resp = ""
+        while True:
+            tmp = sock.recv(640)
+            resp   += tmp
+            if tmp ==  '' or "/>" in resp:
+                break
+        if '<resp res="1" fileid=' in resp:
+            return True
+        else:
+            try:
+                error_msg = re.findall('errorMessage="([^"]*)"',resp)[0]
+                print "BLAD(nieudane wysylanie):\r\n",error_msg
+            except IndexError:
+                pass
+            print resp
+            return False
+        
+        
+#####################################################
+        
+        
+if __name__ == "__main__":
+    c = Chomik()
+    c.login("tmp_chomik1", "haslo1234")
+    #c.upload("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp")
+    c.resume("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp", c.folder_id, c.chomik_id, "df812da8d5b2fe1312e80a6af969f924", "s2148.chomikuj.pl", 8084, 1314203696)
