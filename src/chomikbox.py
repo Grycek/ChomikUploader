@@ -54,13 +54,33 @@ def print_coding(text):
                 pass
     return text
 
+#####################################################################################################
+class ChomikException(Exception):
+    def __init__(self, filepath, filename, folder_id, chomik_id, token, server, port, stamp, excpt = None):
+        Exception.__init__(self)
+        self.filepath  = filepath
+        self.filename  = filename
+        self.folder_id = folder_id
+        self.chomik_id = chomik_id
+        self.token     = token
+        self.server    = server
+        self.port      = port
+        self.stamp     = stamp
+        self.excpt     = excpt
+    
+    def __str__(self):
+        return str(self.excpt)
+    
+    def get_excpt(self):
+    	return self.excpt
+    
+    def args(self):
+        return (self.filepath, self.filename, self.folder_id, self.chomik_id, self.token, self.server, self.port, self.stamp)
 
-##########################################################################################
+#####################################################################################################
 #TODO: zmienic cos z kodowaniem
 class Chomik(object):
     def __init__(self):
-        #self.opener  = urllib2.build_opener()
-        #current position
         self.folders_dom   = ''
         self.ses_id        = ''
         self.chomik_id     = ''
@@ -141,6 +161,9 @@ class Chomik(object):
 
     
     def cur_adr(self, atr = None):
+        """
+        Zwracanie lub ustawianie obecnego polozenia w katalogach
+        """
         if atr == None:
             return self.cur_fold, self.folder_id
         else:
@@ -222,7 +245,7 @@ class Chomik(object):
                 result, dom, folder_id = self.__access_node(fold + [f])
                 #jezeli nie udalo sie ani utworzyc ani przejsc, to zwroc False
                 if result == False:
-                    return False
+                    return (False, None, None)
                 else:
                     fold.append(f)
         return (True,dom, folder_id)
@@ -265,13 +288,19 @@ class Chomik(object):
 
 
     def upload(self, filepath, filename):
-    	try:
+        try:
             return self.__upload(filepath, filename)
             #TODO: nie wiem jeszcze jakie wyjatki tu lapac
             #powinny tu byc lapane bledy, ktore wystapily podczas wysylania, aby
             #zapisac do pliku informacje do wznowienia wysylania
-        except Exception, e:
-        	raise e
+            #Prawdopodobnie powinienem tutaj lapac tylko socket.error
+        except (Exception, KeyboardInterrupt), e:
+            try:
+                excpt = ChomikException(filepath, filename, self.folder_id, self.chomik_id, self.token, self.server, self.port, self.stamp, excpt = e)
+            except Exception:
+                raise e
+            else:
+                raise excpt
 
 
     
@@ -300,7 +329,7 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        print resp
+        #print resp
         try:
             self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
         except IndexError, e:
@@ -361,7 +390,6 @@ class Chomik(object):
         contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
         contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
         
-        #FIXME - czy contenttail zaczyna sie od "\r\n"
         contenttail   = "\r\n" + boundary + '--\r\n'
         
         contentlength = len(contentheader) + size + len(contenttail)
@@ -370,8 +398,8 @@ class Chomik(object):
         header  += "Content-Type: multipart/mixed; boundary={0}\r\n".format(boundary[2:])
         header  += "Connection: close\r\n"
         header  += "Host: {0}:{1}\r\n".format(server,port)
-        #TODO - policz dlugosc
-        header  += "Content-Length: {0}\r\n\r\n\r\n".format(contentlength) #FIXME - czy na pewno trzy entery?   
+        header  += "Content-Length: {0}\r\n\r\n\r\n".format(contentlength)
+        pass
         header += contentheader
         
         return header, contenttail
@@ -379,19 +407,21 @@ class Chomik(object):
     
 #####################################################    
     def resume(self, filepath, filename, folder_id, chomik_id, token, server, port, stamp):
-    	"""
-    	Wznawianie uploadowania pliku filepath o nazwie filename o danych: folder_id, chomik_id, token, server, port, stamp
-    	"""
+        """
+        Wznawianie uploadowania pliku filepath o nazwie filename o danych: folder_id, chomik_id, token, server, port, stamp
+        """
         self.relogin()
+        self.chomik_id = chomik_id
+        self.folder_id = folder_id
         #Pobieranie informacji o serwerze
         filename     = change_coding(filename)
         filename_len = len(filename)
         #print filename, filename_len
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (server, port) )
+        sock.connect( (server, int(port) ) )
         tmp = """GET /resume/check/?key={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: {1}:{2}\r\n\r\n""".format(token, server, port)
-        print tmp
+        #print tmp
         sock.send( tmp )
         #Odbieranie odpowiedzi
         resp = ""
@@ -402,7 +432,7 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        print resp
+        #print resp
         try:
             filesize_sent = int(re.findall( """<resp file_size="([^"]*)" skipThumbnails="[^"]*" res="1"/>""", resp)[0])
         except IndexError, e:
@@ -413,8 +443,8 @@ class Chomik(object):
         size  = os.path.getsize(filepath)
         header, contenttail =  self.__create_header(server, port, token, stamp, filename, (size - filesize_sent), resume_from = filesize_sent)  
         
-        print header
-        print contenttail
+        #print header
+        #print contenttail
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
@@ -459,6 +489,6 @@ class Chomik(object):
         
 if __name__ == "__main__":
     c = Chomik()
-    c.login("tmp_chomik1", "haslo1234")
+    #c.login("", "")
     #c.upload("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp")
     c.resume("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp", c.folder_id, c.chomik_id, "df812da8d5b2fe1312e80a6af969f924", "s2148.chomikuj.pl", 8084, 1314203696)
