@@ -489,6 +489,6 @@ class Chomik(object):
         
 if __name__ == "__main__":
     c = Chomik()
-    c.login("tmp_chomik1", "")
+    c.login("", "")
     #c.upload("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp")
     c.resume("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp", c.folder_id, c.chomik_id, "df812da8d5b2fe1312e80a6af969f924", "s2148.chomikuj.pl", 8084, 1314203696)

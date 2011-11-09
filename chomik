@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*- 
 
 try:
-    #import chomikuploader.main
-    raise ImportError
+    import chomikuploader.main
+    #raise ImportError
 except ImportError, e:
     import src.main
