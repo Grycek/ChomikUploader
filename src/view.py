@@ -256,7 +256,16 @@ def change_print_coding(text):
                 pass
     return text
 
+def singleton(cls):
+    instances = {}
+    def getinstance():
+        if cls not in instances:
+            instances[cls] = cls()
+        return instances[cls]
+    return getinstance
 
+
+@singleton
 class View(object):
     """
     View object (displaying informations)

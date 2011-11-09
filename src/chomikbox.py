@@ -16,6 +16,7 @@ import sys
 import time
 import os
 import progress
+import view
 from xml.dom.minidom import parseString
 
 glob_timeout = 240
@@ -43,16 +44,6 @@ def to_unicode(text):
         print e
     return text
 
-def print_coding(text):
-    if sys.platform.startswith('win'):
-        try:
-            text = text.decode('utf-8')
-        except Exception:
-            try:
-                text = text.decode('cp1250')
-            except Exception, e:
-                pass
-    return text
 
 #####################################################################################################
 class ChomikException(Exception):
@@ -88,6 +79,7 @@ class Chomik(object):
         self.cur_fold      = []
         self.user          = ''
         self.password      = ''
+        self.view          = view.View()
 
 
         
@@ -120,10 +112,10 @@ class Chomik(object):
             self.ses_id    = ses_id
             self.chomik_id = chomik_id
         except IndexError, e:
-            #TODO: ukryc wyswietlanie bledow
-            print "Blad(relogin):"
-            print e
-            print resp
+            self.view.print_( "Blad(relogin):" )
+            self.view.print_( e )
+            self.view.print_( resp )
+            #TODO: tracebar
             return False
         else:
             return True
@@ -156,7 +148,7 @@ class Chomik(object):
             raise Exception("Blad pobierania listy folderow")
         dom = parseString(sep + resp).childNodes[0]
         self.folders_dom = dom
-        #print dom.childNodes[0].getAttribute("name")
+        #self.view.print_( dom.childNodes[0].getAttribute("name") )
 
 
     
@@ -238,7 +230,7 @@ class Chomik(object):
                         #
                         folder_id = int(i.getAttribute("id"))
                         fold.append(f)
-                        #print folder_id, f
+                        #self.view.print_( folder_id, f )
             else:
                 self.mkdir(f, folder_id)
                 self.get_dir_list()
@@ -260,7 +252,7 @@ class Chomik(object):
         if folder_id == None:
             folder_id = self.folder_id
         dirname   = change_coding(dirname)
-        print "Creating", print_coding(dirname), "directory"
+        self.view.print_( "Creating", dirname, "directory" )
         dirname   = urllib2.quote(dirname)
         #Laczenie sie
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -279,10 +271,10 @@ class Chomik(object):
         #TODO - nie wiem kiedy chomik uznaje, ze utworzenie katalogu sie nie udalo
         #wiec na razie uznaje za blad,jesli w odpowiedzi nie otrzymamy "<resp res="1" />"
         if '<resp res="1" />' in resp:
-            print "Creation success\n"
+            self.view.print_( "Creation success\r\n" )
             return True
         else:
-            print "Creation fail\n"
+            self.view.print_( "Creation fail\r\n" )
             return False
         
 
@@ -313,12 +305,12 @@ class Chomik(object):
         #Pobieranie informacji o serwerze
         filename     = change_coding(filename)
         filename_len = len(filename)
-        #print filename, filename_len
+        #self.view.print_( filename, filename_len )
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
         sock.connect( (login_ip, login_port) )
         tmp = """POST /upload/token/?chomik_id={1}&folder_id={2}&sess_id={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\nContent-Length: {3}\r\n\r\n{4}""".format(self.ses_id, self.chomik_id, self.folder_id, filename_len, filename)
-        #print tmp
+        #self.view.print_( tmp )
         sock.send( tmp )
         #Odbieranie odpowiedzi
         resp = ""
@@ -329,13 +321,14 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        #print resp
+        #self.view.print_( resp )
         try:
             self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
         except IndexError, e:
             #FIXME
-            print "Blad(pobieranie informacji z chomika):", e
-            print resp
+            self.view.print_( "Blad(pobieranie informacji z chomika):", e )
+            self.view.print_( resp )
+            #TODO: traceback
             return False
         
         #Tworzenie naglowka
@@ -357,7 +350,7 @@ class Chomik(object):
             pb.update(len(chunk))
         
         f.close()        
-        #print 'Sending tail'
+        #self.view.print_( 'Sending tail' )
         sock.send(contenttail)
         
         resp = ""
@@ -371,10 +364,10 @@ class Chomik(object):
         else:
             try:
                 error_msg = re.findall('errorMessage="([^"]*)"',resp)[0]
-                print "BLAD(nieudane wysylanie):\r\n",error_msg
+                self.view.print_( "BLAD(nieudane wysylanie):\r\n",error_msg )
             except IndexError:
                 pass
-            print resp
+            self.view.print_( resp )
             return False
     
     
@@ -416,12 +409,12 @@ class Chomik(object):
         #Pobieranie informacji o serwerze
         filename     = change_coding(filename)
         filename_len = len(filename)
-        #print filename, filename_len
+        #self.view.print_( filename, filename_len )
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
         sock.connect( (server, int(port) ) )
         tmp = """GET /resume/check/?key={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: {1}:{2}\r\n\r\n""".format(token, server, port)
-        #print tmp
+        #self.view.print_( tmp )
         sock.send( tmp )
         #Odbieranie odpowiedzi
         resp = ""
@@ -432,19 +425,19 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        #print resp
+        #self.view.print_( resp )
         try:
             filesize_sent = int(re.findall( """<resp file_size="([^"]*)" skipThumbnails="[^"]*" res="1"/>""", resp)[0])
         except IndexError, e:
-            print "Nie mozna bylo wznowic pobierania"
+            self.view.print_( "Nie mozna bylo wznowic pobierania" )
             return False
         
         #Tworzenie naglowka
         size  = os.path.getsize(filepath)
         header, contenttail =  self.__create_header(server, port, token, stamp, filename, (size - filesize_sent), resume_from = filesize_sent)  
         
-        #print header
-        #print contenttail
+        #self.view.print_( header )
+        #self.view.print_( contenttail )
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
@@ -463,7 +456,7 @@ class Chomik(object):
             pb.update(len(chunk))
             
         f.close()        
-        #print 'Sending tail'
+        #self.view.print_( 'Sending tail' )
         sock.send(contenttail)
         
         resp = ""
@@ -477,10 +470,10 @@ class Chomik(object):
         else:
             try:
                 error_msg = re.findall('errorMessage="([^"]*)"',resp)[0]
-                print "BLAD(nieudane wysylanie):\r\n",error_msg
+                self.view.print_( "BLAD(nieudane wysylanie):\r\n",error_msg )
             except IndexError:
                 pass
-            print resp
+            self.view.print_( resp )
             return False
         
         

@@ -9,20 +9,16 @@
 # Ver: 0.3
 
 #from chomik import *
+import view
 from chomikbox import *
 import getpass
 import re
+import traceback
 
-def print_coding(text):
-    try:
-        if sys.platform.startswith('win'):
-          text = text.decode('cp1250')
-    except Exception:
-        pass
-    return text
 
 class Uploader(object):
     def __init__(self, user = None, password = None):
+        self.view             = view.View()
         self.user             = user
         self.password         = password
         self.notuploaded_file = 'notuploaded.txt'
@@ -32,34 +28,37 @@ class Uploader(object):
             self.user     = raw_input('Podaj nazwe uzytkownika:\n')
         if self.password == None:
             self.password = getpass.getpass('Podaj haslo:\r\n')
-        print 'Logowanie'
+        self.view.print_('Logowanie')
         if not self.chomik.login(self.user, self.password):
-            print 'Bledny login lub haslo'
+            self.view.print_( 'Bledny login lub haslo' )
             sys.exit(1)
 
 
     
     def upload_file(self, chomikpath, filepath):
-        print 'Zmiana katalogow'
+        self.view.print_( 'Zmiana katalogow' )
         self.chomik.chdirs(chomikpath)
-        print 'Uploadowanie'
+        self.view.print_( 'Uploadowanie' )
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except Exception, e:
-            print 'Blad: ', e
+            self.view.print_( 'Blad: ', e )
+            self.view.print_( "-"*10 )
+            traceback.print_exc(file=sys.stdout)
+            self.view.print_( "-"*10 )
             result = False
         if  result == True:
-            print 'Zakonczono uploadowanie'
+            self.view.print_( 'Zakonczono uploadowanie' )
         else:
-            print 'Blad. Plik nie zostal wyslany'
+            self.view.print_( 'Blad. Plik nie zostal wyslany' )
             
             
             
     def upload_dir(self, chomikpath, dirpath):
-    	print 'Wznawianie nieudanych transferow'
+    	self.view.print_( 'Wznawianie nieudanych transferow' )
     	self.resume()
-    	print 'Zakonczono probe wznawiania transferow\r\n'
-        print 'Zmiana katalogow'
+    	self.view.print_( 'Zakonczono probe wznawiania transferow\r\n' )
+        self.view.print_( 'Zmiana katalogow' )
         #open(self.notuploaded_file,'w').close()
         if not os.path.exists(self.uploaded_file):
             open(self.uploaded_file, 'w').close()
@@ -69,7 +68,7 @@ class Uploader(object):
         f.close()
         self.uploaded = set(self.uploaded)
         if not self.chomik.chdirs(chomikpath):
-            print 'Nie udalo sie zmienic katalogu w chomiku', chomikpath
+            self.view.print_( 'Nie udalo sie zmienic katalogu w chomiku', chomikpath )
             sys.exit(1)
         self.__upload_aux(dirpath)
 
@@ -104,13 +103,14 @@ class Uploader(object):
         filepath = os.path.join(dirpath, fil)
         if filepath in self.uploaded:
             return
-        print 'Uploadowanie pliku:', print_coding(filepath)
+        self.view.print_( 'Uploadowanie pliku:', filepath )
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except ChomikException, e:
-            print 'Blad:'
-            print e
-            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
+            self.view.print_( 'Blad:' )
+            self.view.print_( e )
+            #TODO: traceback
+            self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
             _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
             f = open(self.notuploaded_file,'a')
             f.write(filepath + '\t')
@@ -128,17 +128,16 @@ class Uploader(object):
             else:
                 return
         except Exception, e:
-            print 'Blad:'
-            print e
-            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
+            self.view.print_( 'Blad:' )
+            self.view.print_( e )
+            self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
             f = open(self.notuploaded_file,'a')
             f.write(filepath + '\r\n')
             f.close()
             return
-            pass
 
         if result == False:
-            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
+            self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
             f = open(self.notuploaded_file,'a')
             f.write(filepath + '\r\n')
             f.close()
@@ -146,7 +145,7 @@ class Uploader(object):
             f = open(self.uploaded_file,'a')
             f.write(filepath + '\r\n')
             f.close()
-            print 'Zakonczono uploadowanie\n'
+            self.view.print_( 'Zakonczono uploadowanie\r\n' )
 
 
 
@@ -158,12 +157,13 @@ class Uploader(object):
         try:
             changed = self.chomik.chdirs(dr)
         except Exception, e:
-            print 'Blad. Nie wyslano katalogu: ', print_coding( os.path.join(dirpath, dr) )
-            print e
+            self.view.print_( 'Blad. Nie wyslano katalogu: ', os.path.join(dirpath, dr)  )
+            self.view.print_( e )
+            #TODO: traceback
             time.sleep(60)
             return
         if changed != True:
-            print "Nie udalo sie zmienic katalogu", print_coding( dr )
+            self.view.print_( "Nie udalo sie zmienic katalogu", dr  )
             return
         self.__upload_aux( os.path.join(dirpath, dr) )        
     ####################################################################
@@ -198,21 +198,22 @@ class Uploader(object):
         """
         Wysylanie/wznawianie pojedynczego pliku
         """
-        print 'Wznawianie pliku:', print_coding(filepath)
+        self.view.print_( 'Wznawianie pliku:', filepath )
         try:
             result = self.chomik.resume(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
         except Exception, e:
-            print 'Blad:'
-            print e
-            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
+            self.view.print_( 'Blad:' )
+            self.view.print_( e )
+            #TODO: traceback
+            self.view.print_( 'Blad. Plik ',filepath,' nie zostal wyslany\r\n' )
             return False
             
         if result == False:
-            print 'Blad. Plik ',print_coding(filepath),' nie zostal wyslany\n'
+            self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
             return False
         else:
             f = open(self.uploaded_file,'a')
             f.write(filepath + '\r\n')
             f.close()
-            print 'Zakonczono uploadowanie\n'
+            self.view.print_( 'Zakonczono uploadowanie\r\n' )
             return True
