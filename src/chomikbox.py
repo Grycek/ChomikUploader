@@ -15,8 +15,9 @@ import re
 import sys
 import time
 import os
-import progress
+#import progress
 import view
+import traceback
 from xml.dom.minidom import parseString
 
 glob_timeout = 240
@@ -341,17 +342,23 @@ class Chomik(object):
         sock.send(header)
         
         f = open(filepath,'rb')
-        pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
-        while True:
-            chunk = f.read(1024)
-            if not chunk:
-                break
-            sock.send(chunk)
-            pb.update(len(chunk))
-        
-        f.close()        
-        #self.view.print_( 'Sending tail' )
-        sock.send(contenttail)
+        #pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
+        pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = 0, name = filepath)
+        self.view.add_progress_bar(pb)
+        try:
+            while True:
+                chunk = f.read(1024)
+                if not chunk:
+                    break
+                sock.send(chunk)
+                pb.update(len(chunk))
+                #TODO: to trzeba bedzie poprawic - osobny watek na widok?update_progress_bars
+                self.view.update_progress_bars()
+            f.close()        
+            #self.view.print_( 'Sending tail' )
+            sock.send(contenttail)
+        finally:
+            self.view.delete_progress_bar(pb)
         
         resp = ""
         while True:
@@ -443,21 +450,26 @@ class Chomik(object):
         sock.settimeout(glob_timeout)
         sock.connect( (server,int(port) ) )
         sock.send(header)
-
+        
         f = open(filepath,'rb')
         f.seek(filesize_sent)
-        pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
-        pb.update(filesize_sent)
-        while True:
-            chunk = f.read(1024)
-            if not chunk:
-                break
-            sock.send(chunk)
-            pb.update(len(chunk))
-            
-        f.close()        
-        #self.view.print_( 'Sending tail' )
-        sock.send(contenttail)
+        pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = filesize_sent, name = filepath)
+        #pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
+        #pb.update(filesize_sent)
+        self.view.add_progress_bar(pb)
+        try:
+            while True:
+                chunk = f.read(1024)
+                if not chunk:
+                    break
+                sock.send(chunk)
+                pb.update(len(chunk))
+                self.view.update_progress_bars()
+            f.close()        
+            #self.view.print_( 'Sending tail' )
+            sock.send(contenttail)
+        finally:
+            self.view.delete_progress_bar(pb)
         
         resp = ""
         while True:

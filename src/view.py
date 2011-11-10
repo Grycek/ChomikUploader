@@ -1,5 +1,12 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*- 
+# Author: Adam Grycner (adam_gr [at] gazeta.pl)
+#
+# Written: 08/08/2011
+#
+# Released under: GNU GENERAL PUBLIC LICENSE
+#
+# Ver: 0.3
 
 import ctypes
 import sys
@@ -170,7 +177,7 @@ class ProgressBar(object):
         self.total       = total
         # Refresh rate in seconds
         self.rate_refresh = rate_refresh
-        self.count        = 0
+        self.count        = count
         # dane progress bara
         self.meter_ticks    = 40
         self.meter_division = float(self.total) / self.meter_ticks
@@ -274,6 +281,7 @@ class View(object):
         self.lock          = threading.Lock()
         self.progress_bars = []
         self.console       = create_console()
+        self.last_update   = time.time()
     
     def print_(self, *args):
         """
@@ -281,6 +289,7 @@ class View(object):
         """
         self.lock.acquire()
         try:
+            self.last_update   = time.time()
             self._wipe_progress_bars()
             for i in args: print change_print_coding(i),
             print
@@ -320,11 +329,15 @@ class View(object):
         """
         Redisplay progress bar objects
         """
+        #sprawdzic kiedy ostatnio byl aktualizowany ekran
         self.lock.acquire()
         try:
-            self._wipe_progress_bars()
-            self._show_progress_bars()
-            sys.stdout.flush()
+            now = time.time()
+            if now - self.last_update > 0.5:
+                self._wipe_progress_bars()
+                self._show_progress_bars()
+                sys.stdout.flush()
+                self.last_update   = time.time()
         finally:
             self.lock.release()
 

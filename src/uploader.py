@@ -8,17 +8,18 @@
 #
 # Ver: 0.3
 
-#from chomik import *
 import view
 from chomikbox import *
 import getpass
 import re
 import traceback
+import model
 
 
 class Uploader(object):
     def __init__(self, user = None, password = None):
         self.view             = view.View()
+        self.model            = model.Model()
         self.user             = user
         self.password         = password
         self.notuploaded_file = 'notuploaded.txt'
@@ -59,14 +60,6 @@ class Uploader(object):
     	self.resume()
     	self.view.print_( 'Zakonczono probe wznawiania transferow\r\n' )
         self.view.print_( 'Zmiana katalogow' )
-        #open(self.notuploaded_file,'w').close()
-        if not os.path.exists(self.uploaded_file):
-            open(self.uploaded_file, 'w').close()
-        f = open(self.uploaded_file, 'r')
-        self.uploaded = f.read().split('\n')
-        self.uploaded = [i.strip() for i in self.uploaded]
-        f.close()
-        self.uploaded = set(self.uploaded)
         if not self.chomik.chdirs(chomikpath):
             self.view.print_( 'Nie udalo sie zmienic katalogu w chomiku', chomikpath )
             sys.exit(1)
@@ -101,7 +94,7 @@ class Uploader(object):
         W odpowiednim pliku zapisujemy, czy plik zostal poprawnie wyslany
         """
         filepath = os.path.join(dirpath, fil)
-        if filepath in self.uploaded:
+        if self.model.in_uploaded(filepath):
             return
         self.view.print_( 'Uploadowanie pliku:', filepath )
         try:
@@ -112,17 +105,7 @@ class Uploader(object):
             #TODO: traceback
             self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
             _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
-            f = open(self.notuploaded_file,'a')
-            f.write(filepath + '\t')
-            f.write(filename + '\t')
-            f.write(str(folder_id) + '\t')
-            f.write(str(chomik_id) + '\t')
-            f.write(str(token) + '\t')
-            f.write(str(server) + '\t')
-            f.write(str(port) + '\t')
-            f.write(str(stamp))
-            f.write('\r\n')
-            f.close()
+            self.model.add_notuploaded_resume( filepath, filename, folder_id, chomik_id, token, server, port, stamp )
             if type(e.get_excpt()) == KeyboardInterrupt:
             	raise e.get_excpt()
             else:
@@ -131,20 +114,15 @@ class Uploader(object):
             self.view.print_( 'Blad:' )
             self.view.print_( e )
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
-            f = open(self.notuploaded_file,'a')
-            f.write(filepath + '\r\n')
-            f.close()
+            self.model.add_notuploaded_normal(filepath)
             return
 
         if result == False:
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
-            f = open(self.notuploaded_file,'a')
-            f.write(filepath + '\r\n')
-            f.close()
+            self.model.add_notuploaded_normal(filepath)
         else:
-            f = open(self.uploaded_file,'a')
-            f.write(filepath + '\r\n')
-            f.close()
+            self.model.add_uploaded(filepath)
+            self.model.remove_notuploaded(filepath)
             self.view.print_( 'Zakonczono uploadowanie\r\n' )
 
 
@@ -173,25 +151,9 @@ class Uploader(object):
         """
         Wznawia wysylanie plikow z listy notuploaded.txt
         """
-        if not os.path.exists(self.notuploaded_file):
-        	open(self.notuploaded_file,"w")
-        f           = open(self.notuploaded_file,"r")
-        files       = [ i.strip() for i in f.readlines()]
-        f.close()
-        notuploaded = []
-        for f in files:
-            try:
-                filepath, filename, folder_id, chomik_id, token, host, port, stamp = re.findall("([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)\t([^\t]*)", f)[0]
-                result = self.__resume_file_aux(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
-                if result == False:
-                    notuploaded.append( (filepath, filename, folder_id, chomik_id, token, host, port, stamp) )
-            except IndexError, e:
-                continue
-        f = open(self.notuploaded_file, "w")
-        for n in notuploaded:
-             f.write( "\t".join(n) )
-             f.write( "\r\n" )
-        f.close()
+        notuploaded = self.model.get_notuploaded_resume()
+        for filepath, filename, folder_id, chomik_id, token, host, port, stamp in notuploaded:
+            self.__resume_file_aux(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
 
     
     def __resume_file_aux(self, filepath, filename, folder_id, chomik_id, token, host, port, stamp):
@@ -212,8 +174,7 @@ class Uploader(object):
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
             return False
         else:
-            f = open(self.uploaded_file,'a')
-            f.write(filepath + '\r\n')
-            f.close()
+            self.model.add_uploaded(filepath)
+            self.model.remove_notuploaded(filepath)
             self.view.print_( 'Zakonczono uploadowanie\r\n' )
             return True
