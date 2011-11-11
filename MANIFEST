@@ -5,4 +5,5 @@ src/__init__.py
 src/main.py
 src/uploader.py
 src/chomikbox.py
-src/progress.py
+src/view.py
+src/model.py

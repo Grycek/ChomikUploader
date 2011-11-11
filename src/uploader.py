@@ -16,6 +16,34 @@ import traceback
 import model
 
 
+def debug(tb):
+    """
+    tb = traceback
+    """
+    v  = view.View()
+    st    = traceback.format_tb(tb)
+    stack = []
+    while tb:
+        stack.append(tb.tb_frame)
+        tb = tb.tb_next
+    #traceback.print_exc()
+    v.print_( "-"*10 )
+    v.print_( ''.join(st) )
+    v.print_( "Locals by frame, innermost last" )
+    for frame in stack:
+        v.print_()
+        v.print_( "Frame %s in %s at line %s" % (frame.f_code.co_name,
+                                             frame.f_code.co_filename,
+                                             frame.f_lineno) )
+        for key, value in frame.f_locals.items():
+            try:
+               v.print_( "\t%20s = " % key, value)
+            except:
+                v.print_( "<ERROR WHILE PRINTING VALUE>" )
+    v.print_( "-"*10 )
+
+
+
 class Uploader(object):
     def __init__(self, user = None, password = None):
         self.view             = view.View()
@@ -44,9 +72,8 @@ class Uploader(object):
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except Exception, e:
             self.view.print_( 'Blad: ', e )
-            self.view.print_( "-"*10 )
-            traceback.print_exc(file=sys.stdout)
-            self.view.print_( "-"*10 )
+            trbck = sys.exc_info()[2]
+            debug(trbck)
             result = False
         if  result == True:
             self.view.print_( 'Zakonczono uploadowanie' )
@@ -106,15 +133,19 @@ class Uploader(object):
             self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
             _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
             self.model.add_notuploaded_resume( filepath, filename, folder_id, chomik_id, token, server, port, stamp )
+            trbck = sys.exc_info()[2]
+            debug(trbck)
             if type(e.get_excpt()) == KeyboardInterrupt:
             	raise e.get_excpt()
             else:
                 return
         except Exception, e:
+            self.model.add_notuploaded_normal(filepath)
             self.view.print_( 'Blad:' )
             self.view.print_( e )
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
-            self.model.add_notuploaded_normal(filepath)
+            trbck = sys.exc_info()[2]
+            debug(trbck)
             return
 
         if result == False:
@@ -137,7 +168,8 @@ class Uploader(object):
         except Exception, e:
             self.view.print_( 'Blad. Nie wyslano katalogu: ', os.path.join(dirpath, dr)  )
             self.view.print_( e )
-            #TODO: traceback
+            trbck = sys.exc_info()[2]
+            debug(trbck)
             time.sleep(60)
             return
         if changed != True:
@@ -166,7 +198,8 @@ class Uploader(object):
         except Exception, e:
             self.view.print_( 'Blad:' )
             self.view.print_( e )
-            #TODO: traceback
+            trbck = sys.exc_info()[2]
+            debug(trbck)
             self.view.print_( 'Blad. Plik ',filepath,' nie zostal wyslany\r\n' )
             return False
             

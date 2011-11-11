@@ -279,7 +279,6 @@ class Chomik(object):
             return False
         
 
-
     def upload(self, filepath, filename):
         try:
             return self.__upload(filepath, filename)
@@ -326,10 +325,8 @@ class Chomik(object):
         try:
             self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
         except IndexError, e:
-            #FIXME
             self.view.print_( "Blad(pobieranie informacji z chomika):", e )
             self.view.print_( resp )
-            #TODO: traceback
             return False
         
         #Tworzenie naglowka

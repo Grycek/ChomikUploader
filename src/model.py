@@ -11,9 +11,23 @@ import os
 import threading
 import re
 
+
+def singleton(cls):
+    instances = {}
+    def getinstance():
+        if cls not in instances:
+            instances[cls] = cls()
+        return instances[cls]
+    return getinstance
+
+
+#@singleton
 class Model(object):
     
     def __init__(self):
+        """
+        Wczytywanie danych z plikow uploaded.txt i notuploaded.txt
+        """
         self.lock                  = threading.Lock()
         self.notuploaded_file_name = 'notuploaded.txt'
         self.uploaded_file_name    = 'uploaded.txt'
@@ -44,18 +58,28 @@ class Model(object):
         
     
     def add_notuploaded_normal(self, filepath):
+        """
+        Dodawanie informacji o filepath na liscie notuploaded i w pliku notuploaded.txt
+        """
         self.lock.acquire()
         try:
-            self.notuploaded_normal.append(filepath)
-            f = open(self.notuploaded_file_name,'a')
-            f.write(filepath + '\r\n')
-            f.close()
+            if not filepath in self.notuploaded_normal:
+                self.notuploaded_normal.append(filepath)
+                f = open(self.notuploaded_file_name,'a')
+                f.write(filepath + '\r\n')
+                f.close()
         finally:
             self.lock.release()
 
     def add_notuploaded_resume(self, filepath, filename, folder_id, chomik_id, token, host, port, stamp):
+        """
+        Dodawanie informacji o filepath i danych do wznawiania na liscie notuploaded i w pliku notuploaded.txt
+        """
         self.lock.acquire()
         try:
+            self.notuploaded_resume = [ i for i in self.notuploaded_resume if i[0] != filepath]
+            self.notuploaded_normal = [ i for i in self.notuploaded_normal if i != filepath]
+            self._save_notuploaded()
             self.notuploaded_resume.append( (filepath, filename, folder_id, chomik_id, token, host, port, stamp) )
             f = open(self.notuploaded_file_name,'a')
             f.write(filepath + '\t')
@@ -72,31 +96,43 @@ class Model(object):
             self.lock.release()
     
     def remove_notuploaded(self, filepath):
+        """
+        Usuwanie filepath z listy notuploaded i z pliku notuploaded.txt
+        """
         self.lock.acquire()
         try:
             self.notuploaded_resume = [ i for i in self.notuploaded_resume if i[0] != filepath]
-            self.notuploaded_normal = [ i for i in self.notuploaded_resume if i != filepath]
+            self.notuploaded_normal = [ i for i in self.notuploaded_normal if i != filepath]
             self._save_notuploaded()
         finally:
             self.lock.release()
 
     def _save_notuploaded(self):
+        """
+        Zapisanie do pliku nieudanych wyslan
+        """
         f = open(self.notuploaded_file_name,'w')
-        for f in self.notuploaded_resume:
-            l = [ str(i) for i in list(f)]
+        for nu in self.notuploaded_resume:
+            l = [ str(i) for i in list(nu)]
             f.write( '\t'.join(l) )
             f.write( '\r\n' )
-        for f in self.notuploaded_normal:
-            f.write( f )
+        for nu in self.notuploaded_normal:
+            f.write( nu )
             f.write( '\r\n' )
         f.close()
 
         
     def get_notuploaded_resume(self):
+        """
+        Zwraca liste plikow, ktore mozna wznowic
+        """
         return self.notuploaded_resume
 
 
     def add_uploaded(self, filepath):
+        """
+        Dodanie filepath do listy plikow poprawnie wyslanych
+        """
         self.lock.acquire()
         try:
             self.uploaded.add(filepath)
@@ -108,6 +144,9 @@ class Model(object):
 
 
     def in_uploaded(self, filepath):
+        """
+        Sprawdzanie, czy plik znajduje sie na liscie plikow wyslanych
+        """
         self.lock.acquire()
         try:
             result = filepath in self.uploaded
