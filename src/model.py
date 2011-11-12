@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/08/2011
+# Written: 12/11/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.3
+# Ver: 0.4
 import os
 import threading
 import re
+import view
 
 
 def singleton(cls):
@@ -28,6 +29,7 @@ class Model(object):
         """
         Wczytywanie danych z plikow uploaded.txt i notuploaded.txt
         """
+        self.view                  = view.View()
         self.lock                  = threading.Lock()
         self.notuploaded_file_name = 'notuploaded.txt'
         self.uploaded_file_name    = 'uploaded.txt'
@@ -48,6 +50,7 @@ class Model(object):
         f.close()
         self.notuploaded_resume = []
         self.notuploaded_normal = []
+        self.pending            = []
         
         for f in files:
             try:
@@ -154,9 +157,33 @@ class Model(object):
             self.lock.release()
         return result
     
-    def test_singleton(self):
-        self.assertEqual( id(model.Model()), id(model.Model()) )
-        
+    def add_to_pending(self, filepath):
+        pass
     
+    def remove_from_pending(self, filepath):
+        self.lock.acquire()
+        try:
+            self.pending = [i for i in self.pending if i != filepath]
+        finally:
+            self.lock.release()
+        
+    def is_uploaded_or_pended_and_add(self, filepath):
+        """
+        Sprawdza, cyz plik byl juz wyslany lub, czy jest przetwarzany.
+        Jesli nie, to dodaje go do listy przetwarzanych
+        """
+        self.lock.acquire()
+        try:
+            result1 = filepath in self.uploaded
+            result2 = filepath in self.pending
+            result  = (result1 or result2)
+            if (not result1) and (not result2):
+                self.pending.append(filepath)
+        finally:
+            self.lock.release()
+        return result
 if __name__ == '__main__':
-    pass
+    m = Model()
+    print m.add_uploaded('./tmp.txt')
+    print m.is_uploaded_or_pended_and_add('./tmp.txt')
+    print m.is_uploaded_or_pended_and_add('./tmp.txt')

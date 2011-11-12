@@ -2,6 +2,7 @@ INSTALACJA:
 Potrzebny jest python2.* (najlepiej 2.6 lub 2.7) oraz system Linux
 Aby zainstalowac skrypt odpalamy polecenie (z uprawnieniami administratora):
 python setup.py install
+Jesli nie mozemy zdobyc praw administratora mozemy uzywac programu bez instalacji. Wtedy uruchamiamy plik main.py z katalogu src.
 W przypadku systemu Windows nie instalujemy skryptu. Zamiast polecenia "chomik" wpisujemy "python main.py" w katalogu src.
 
 
@@ -9,23 +10,29 @@ PRZYKŁAD UŻYCIA:
 Wypisanie helpa:
 chomik -h
 
-Wysłanie wszystkich plikow z katalogu i podkatalogow do chomikowego katalogu
+1. Wysłanie wszystkich plikow z katalogu i podkatalogow do chomikowego katalogu
 chomik -r "/katalog_na_chomiku/podkatalog" "sciezka_do_katalogu_na_dysku"
 chomik -r "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty"
 
-Wyslanie pojedynczego pliku na chomika
+2. Wyslanie pojedynczego pliku na chomika
 chomik -u "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty/plik.txt"
 
-Logowanie sie do chomika (i wysylanie plikow):
+3. Logowanie sie do chomika (i wysylanie plikow):
 chomik -l nazwa_chomika -p haslo -r "/katalog1/katalog2/katalog3" "./"
 
 lub
 
+chomik -r "/katalog1/katalog2/katalog3" "./"
 Podaj nazwe uzytkownika:
 nazwa_chomik
 Podaj haslo:
 haslo
 
+4. Wysylanie wiekszej liczby plikow na raz (np. 5 w tym samym momencie)
+chomik -t 5 -r "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty"
+
+5. Wypisywanie szczegolowych informacji o bledach (opcja -d)
+chomik -d -r "/katalog1/katalog2/katalog3" "/home/nick/Dokumenty"
 
 UWAGA:
 Skrypt, przy wysylaniu katalogu (parametr -r), tworzy pliki uploaded.txt i notuploaded.txt.

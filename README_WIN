@@ -1,0 +1,37 @@
+URUCHOMIENIE:
+Należy uruchomić konsolę windowsową (pod windowsem xp Uruchom -> cmd)
+
+
+PRZYKŁAD UŻYCIA:
+Wypisanie pomocy:
+chomik.exe -h
+
+1. Wysłanie wszystkich plikow z katalogu i podkatalogow do chomikowego katalogu
+chomik.exe -r "/katalog_na_chomiku/podkatalog" "sciezka_do_katalogu_na_dysku"
+chomik.exe -r "/katalog1/katalog2/katalog3" "C:/home/nick/Dokumenty"
+
+2. Wyslanie pojedynczego pliku na chomika
+chomik.exe -u "/katalog1/katalog2/katalog3" "C:\sample_dir\Dokumenty\plik.txt"
+
+3. Logowanie sie do chomika (i wysylanie plikow):
+chomik.exe -l nazwa_chomika -p haslo -r "/katalog1/katalog2/katalog3" "C:\sample_dir\Dokumenty\"
+
+lub
+
+chomik.exe -r "/katalog1/katalog2/katalog3" "C:\sample_dir\Dokumenty\"
+>> Podaj nazwe uzytkownika:
+<< nazwa_chomik
+>> Podaj haslo:
+<< haslo
+
+4. Wysylanie wiekszej liczby plikow na raz (np. 5 w tym samym momencie)
+chomik.exe -t 5 -r "/katalog1/katalog2/katalog3" "C:\sample_dir\Dokumenty\"
+
+5. Wypisywanie szczegolowych informacji o bledach (opcja -d)
+chomik.exe -d -r "/katalog1/katalog2/katalog3" "C:\sample_dir\Dokumenty\"
+
+
+UWAGA:
+Skrypt, przy wysylaniu katalogu (parametr -r), tworzy pliki uploaded.txt i notuploaded.txt.
+uploaded.txt - pliki poprawnie wyslane; jezeli w katalogu, ktory wysylamy, znajduje sie plik uploaded.txt, to program wczytuje z tego pliku, ktore pliki zostaly juz wyslane i pomija je przy wysylaniu.
+notuploaded.txt - pliki niewyslane (na skutek bledow)

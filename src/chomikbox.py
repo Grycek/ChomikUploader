@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/08/2011
+# Written: 12/11/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.3
+# Ver: 0.4
 
 import socket
 import urllib2
@@ -47,6 +47,7 @@ def to_unicode(text):
     return text
 
 
+
 #####################################################################################################
 class ChomikException(Exception):
     def __init__(self, filepath, filename, folder_id, chomik_id, token, server, port, stamp, excpt = None):
@@ -73,7 +74,15 @@ class ChomikException(Exception):
 #####################################################################################################
 #TODO: zmienic cos z kodowaniem
 class Chomik(object):
-    def __init__(self):
+    def __init__(self, view_ = None, model_ = None):
+        if view_ == None:
+            self.view    = view.View()
+        else:
+            self.view    = view_
+        if model_ == None:
+            self.model   = model.Model()
+        else:
+            self.model   = model_
         self.folders_dom   = ''
         self.ses_id        = ''
         self.chomik_id     = ''
@@ -81,7 +90,6 @@ class Chomik(object):
         self.cur_fold      = []
         self.user          = ''
         self.password      = ''
-        self.view          = view.View()
 
 
         
@@ -284,30 +292,17 @@ class Chomik(object):
     ###########################################################################
     def upload(self, filepath, filename):
         self.relogin()
-        mdl                        = model.Model()
         filename_tmp               = change_coding(filename)
-        mdl.add_notuploaded_normal(filepath)
+        self.model.add_notuploaded_normal(filepath)
         token, stamp, server, port = self.__upload_get_tokens(filepath, filename_tmp)
-        mdl.add_notuploaded_resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+        self.model.add_notuploaded_resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
         if token == None:
             return False
         else:
             result = self.__upload(filepath, filename, token, stamp, server, port)
             if result == True:
-                mdl.remove_notuploaded(filepath)
+                self.model.remove_notuploaded(filepath)
             return result
-        """
-        try:
-            #TODO: zapisac tu w notuplaod
-
-        except (Exception, KeyboardInterrupt), e:
-            try:
-                excpt = ChomikException(filepath, filename, self.folder_id, self.chomik_id, self.token, self.server, self.port, self.stamp, excpt = e)
-            except Exception:
-                raise e
-            else:
-                raise excpt
-        """
 
 
     def __upload_get_tokens(self, filepath, filename):
@@ -524,7 +519,4 @@ class Chomik(object):
         
         
 if __name__ == "__main__":
-    c = Chomik()
-    c.login("", "")
-    #c.upload("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp")
-    c.resume("/home/adam/VBox/Program w wersji Portable ChomikBox 2011.zip", "tmp", c.folder_id, c.chomik_id, "df812da8d5b2fe1312e80a6af969f924", "s2148.chomikuj.pl", 8084, 1314203696)
+    pass

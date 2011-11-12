@@ -2,11 +2,11 @@
 # -*- coding: utf-8 -*- 
 # Author: Adam Grycner (adam_gr [at] gazeta.pl)
 #
-# Written: 08/08/2011
+# Written: 12/11/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.3
+# Ver: 0.4
 
 import view
 from chomikbox import *
@@ -14,9 +14,10 @@ import getpass
 import re
 import traceback
 import model
+import threading
 
 
-def debug(tb):
+def debug_fun(tb):
     """
     tb = traceback
     """
@@ -44,10 +45,31 @@ def debug(tb):
 
 
 
+#############################
+class UploaderThread(threading.Thread):
+    def __init__(self, user, password, chomikpath, dirpath, view_, model_):
+        threading.Thread.__init__(self)
+        self.uploader   = Uploader(user, password, view_, model_)
+        self.chomikpath = chomikpath
+        self.dirpath    = dirpath
+        self.daemon     = True
+    
+    def run(self):
+        self.uploader.upload_dir(self.chomikpath, self.dirpath)
+        
+        
+#############################
 class Uploader(object):
-    def __init__(self, user = None, password = None):
-        self.view             = view.View()
-        self.model            = model.Model()
+    def __init__(self, user = None, password = None, view_ = None, model_ = None, debug = False):
+        if view_ == None:
+            self.view    = view.View()
+        else:
+            self.view    = view_
+        if model_ == None:
+            self.model   = model.Model()
+        else:
+            self.model   = model_
+        self.debug            = debug
         self.user             = user
         self.password         = password
         self.notuploaded_file = 'notuploaded.txt'
@@ -72,8 +94,9 @@ class Uploader(object):
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except Exception, e:
             self.view.print_( 'Blad: ', e )
-            trbck = sys.exc_info()[2]
-            debug(trbck)
+            if self.debug:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
             result = False
         if  result == True:
             self.view.print_( 'Zakonczono uploadowanie' )
@@ -102,10 +125,14 @@ class Uploader(object):
         files.sort()
         dirs  = [ i for i in os.listdir(dirpath) if os.path.isdir( os.path.join(dirpath, i) ) ]
         dirs.sort()
-        
         for fil in files:
-            self.__upload_file_aux(fil, dirpath)
-        
+            #TODO: przetwarzany jest plik
+            filepath = os.path.join(dirpath, fil)
+            #if not self.model.in_uploaded(filepath):
+            if not self.model.is_uploaded_or_pended_and_add(filepath):
+                self.__upload_file_aux(fil, dirpath)
+                self.model.remove_from_pending(filepath)
+            
         for dr in dirs:
             #address = self.chomik.cur_adr
             address = self.chomik.cur_adr()
@@ -121,32 +148,16 @@ class Uploader(object):
         W odpowiednim pliku zapisujemy, czy plik zostal poprawnie wyslany
         """
         filepath = os.path.join(dirpath, fil)
-        if self.model.in_uploaded(filepath):
-            return
         self.view.print_( 'Uploadowanie pliku:', filepath )
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
-            """
-            except ChomikException, e:
-                self.view.print_( 'Blad:' )
-                self.view.print_( e )
-                #TODO: traceback
-                self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
-                _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
-                self.model.add_notuploaded_resume( filepath, filename, folder_id, chomik_id, token, server, port, stamp )
-                trbck = sys.exc_info()[2]
-                debug(trbck)
-                if type(e.get_excpt()) == KeyboardInterrupt:
-                    raise e.get_excpt()
-                else:
-                    return
-            """
         except Exception, e:
             self.view.print_( 'Blad:' )
             self.view.print_( e )
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
-            trbck = sys.exc_info()[2]
-            debug(trbck)
+            if self.debug:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
             return
 
         if result == False:
@@ -168,8 +179,9 @@ class Uploader(object):
         except Exception, e:
             self.view.print_( 'Blad. Nie wyslano katalogu: ', os.path.join(dirpath, dr)  )
             self.view.print_( e )
-            trbck = sys.exc_info()[2]
-            debug(trbck)
+            if self.debug:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
             time.sleep(60)
             return
         if changed != True:
@@ -185,7 +197,10 @@ class Uploader(object):
         """
         notuploaded = self.model.get_notuploaded_resume()
         for filepath, filename, folder_id, chomik_id, token, host, port, stamp in notuploaded:
-            self.__resume_file_aux(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
+            if not self.model.is_uploaded_or_pended_and_add(filepath):
+                self.__resume_file_aux(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
+                self.model.remove_from_pending(filepath)
+                
 
     
     def __resume_file_aux(self, filepath, filename, folder_id, chomik_id, token, host, port, stamp):
@@ -198,8 +213,9 @@ class Uploader(object):
         except Exception, e:
             self.view.print_( 'Blad:' )
             self.view.print_( e )
-            trbck = sys.exc_info()[2]
-            debug(trbck)
+            if self.debug:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
             self.view.print_( 'Blad. Plik ',filepath,' nie zostal wyslany\r\n' )
             return False
             
@@ -211,3 +227,30 @@ class Uploader(object):
             self.model.remove_notuploaded(filepath)
             self.view.print_( 'Zakonczono uploadowanie\r\n' )
             return True
+
+    ####################################################################
+    
+    def upload_multi(self, chomikpath, dirpath, n):
+        #Bug w pythonie
+        #Trzeba wywolac funkcje encoding zanim uruchomi sie watek
+        ########################
+        try:
+            text = ''
+            text = text.decode('cp1250')
+        except Exception:
+            pass
+        try:
+            text = ''
+            text = text.decode('utf8')
+        except Exception:
+            pass
+        #########################
+        th = []
+        for i in xrange(n):
+            upl = UploaderThread(self.user, self.password, chomikpath, dirpath, view_ = self.view, model_ = self.model)
+            upl.start()
+        while threading.active_count() > 1:
+            time.sleep(1.)
+
+if __name__ == '__main__':
+    pass
