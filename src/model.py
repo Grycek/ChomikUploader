@@ -153,6 +153,9 @@ class Model(object):
         finally:
             self.lock.release()
         return result
+    
+    def test_singleton(self):
+        self.assertEqual( id(model.Model()), id(model.Model()) )
         
     
 if __name__ == '__main__':

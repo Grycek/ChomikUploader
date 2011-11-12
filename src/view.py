@@ -177,15 +177,22 @@ class ProgressBar(object):
         self.total       = total
         # Refresh rate in seconds
         self.rate_refresh = rate_refresh
-        self.count        = count
+        
         # dane progress bara
         self.meter_ticks    = 40
         self.meter_division = float(self.total) / self.meter_ticks
-        self.meter_value    = int(self.count / self.meter_division)
+        ##############################
+        self.count        = count
+        #count, ktore bedzie wyswietlane na ekranie
+        self.count_total  = count
+        #predkosc
+        self.rate_current       = 0.0
+        self.rate_current_total = 0.0
+        self.meter_value       = int(self.count / self.meter_division)
+        self.meter_value_total = int(self.count / self.meter_division)
+        #############################
         #time
         self.last_update = None
-        #predkosc
-        self.rate_current = 0.0
         #liczba jednostek od ostatniego odswiezenia predkosci
         self.rate_count   = 0
         #ostatnie odswiezenie
@@ -200,33 +207,47 @@ class ProgressBar(object):
         """
         Update data of progress bar
         """
+        #rate_current
+        #self.count
+        #
+
+        now = time.time()
+        # Caclulate rate of progress
+        rate = 0.0
+        # Add count to Total
+        self.count += count
+        self.count = min(self.count, self.total)
+        if self.last_update == None:
+            self.last_update = now
+
+        # Device Total by meter division
+        value = int(self.count / self.meter_division)
+        if value > self.meter_value:
+            self.meter_value = value
+        
+        self.rate_count   += count
+        if now - self.last_update > 0.5: #FIXME
+            self.history[self.history_index] = self.rate_count / float(now - self.last_update)
+            self.history_index = (self.history_index + 1) % self.history_len
+            hist = [i for i in self.history if i != None]
+            self.rate_current = sum(hist)/float(len(hist))
+            self.rate_count = 0
+            self.last_update = now            
+            ###MUTEXES
+            self.update_to_display()
+
+    
+    def update_to_display(self):
+        """
+        Actualize data to display
+        """
         self.lock.acquire()
         try:
-            now = time.time()
-            # Caclulate rate of progress
-            rate = 0.0
-            # Add count to Total
-            self.count += count
-            self.count = min(self.count, self.total)
-            if self.last_update == None:
-                self.last_update = now
-            
-            self.rate_count   += count
-            if now - self.last_update > 0.5: #FIXME
-                self.history[self.history_index] = self.rate_count / float(now - self.last_update)
-                self.history_index = (self.history_index + 1) % self.history_len
-                hist = [i for i in self.history if i != None]
-                self.rate_current = sum(hist)/float(len(hist))
-                self.rate_count = 0
-                self.last_update = now     
-            
-            # Device Total by meter division
-            value = int(self.count / self.meter_division)
-            if value > self.meter_value:
-                self.meter_value = value
+            self.meter_value_total   = self.meter_value
+            self.count_total         = self.count
+            self.rate_current_total  = self.rate_current
         finally:
             self.lock.release()
-
 
     def get_meter(self, **kw):
         """
@@ -234,11 +255,11 @@ class ProgressBar(object):
         """
         self.lock.acquire()
         try:
-            bar = '-' * self.meter_value
-            pad = ' ' * (self.meter_ticks - self.meter_value)
-            perc = (float(self.count) / self.total) * 100
-            rate_current, unit =  change_unit_bytes(self.rate_current)
-            downloaded, unit_d =  change_unit_bytes(self.count)
+            bar = '-' * self.meter_value_total
+            pad = ' ' * (self.meter_ticks - self.meter_value_total)
+            perc = (float(self.count_total) / self.total) * 100
+            rate_current, unit =  change_unit_bytes(self.rate_current_total)
+            downloaded, unit_d =  change_unit_bytes(self.count_total)
             total, unit_t      =  change_unit_bytes(self.total)
         finally:
             self.lock.release()
@@ -368,6 +389,7 @@ class View(object):
             self._wipe_progress_bars()
             print change_print_coding(progress_bar_object.name),
             sys.stdout.write('\r\n')
+            progress_bar_object.update_to_display()
             sys.stdout.write(progress_bar_object.get_meter())
             sys.stdout.write('\r\n')        
             self.progress_bars.remove(progress_bar_object)

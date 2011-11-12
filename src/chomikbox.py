@@ -19,6 +19,7 @@ import os
 import view
 import traceback
 from xml.dom.minidom import parseString
+import model
 
 glob_timeout = 240
 #KONFIGURACJA
@@ -277,15 +278,28 @@ class Chomik(object):
         else:
             self.view.print_( "Creation fail\r\n" )
             return False
-        
 
+
+        
+    ###########################################################################
     def upload(self, filepath, filename):
+        self.relogin()
+        mdl                        = model.Model()
+        filename_tmp               = change_coding(filename)
+        mdl.add_notuploaded_normal(filepath)
+        token, stamp, server, port = self.__upload_get_tokens(filepath, filename_tmp)
+        mdl.add_notuploaded_resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+        if token == None:
+            return False
+        else:
+            result = self.__upload(filepath, filename, token, stamp, server, port)
+            if result == True:
+                mdl.remove_notuploaded(filepath)
+            return result
+        """
         try:
-            return self.__upload(filepath, filename)
-            #TODO: nie wiem jeszcze jakie wyjatki tu lapac
-            #powinny tu byc lapane bledy, ktore wystapily podczas wysylania, aby
-            #zapisac do pliku informacje do wznowienia wysylania
-            #Prawdopodobnie powinienem tutaj lapac tylko socket.error
+            #TODO: zapisac tu w notuplaod
+
         except (Exception, KeyboardInterrupt), e:
             try:
                 excpt = ChomikException(filepath, filename, self.folder_id, self.chomik_id, self.token, self.server, self.port, self.stamp, excpt = e)
@@ -293,26 +307,21 @@ class Chomik(object):
                 raise e
             else:
                 raise excpt
+        """
 
 
-    
-    def __upload(self, filepath, filename):
+    def __upload_get_tokens(self, filepath, filename):
         """
-        Wysylanie pliku znajdujacego sie pod 'filepath' i nazwanie go 'filename'
-        #TODO: Opis i podpis
+        Pobiera informacje z serwera o tym gdzie i z jakimi parametrami wyslac plik
         """
-        self.relogin()
         #Pobieranie informacji o serwerze
-        filename     = change_coding(filename)
-        filename_len = len(filename)
-        #self.view.print_( filename, filename_len )
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        filename_len = len(filename)    
+        sock         = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )
+        sock.connect( (login_ip, login_port) )        
         tmp = """POST /upload/token/?chomik_id={1}&folder_id={2}&sess_id={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\nContent-Length: {3}\r\n\r\n{4}""".format(self.ses_id, self.chomik_id, self.folder_id, filename_len, filename)
-        #self.view.print_( tmp )
         sock.send( tmp )
-        #Odbieranie odpowiedzi
+        
         resp = ""
         while True:
             tmp = sock.recv(640) 
@@ -321,17 +330,27 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        #self.view.print_( resp )
+        
         try:
             self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
+            return self.token, self.stamp, self.server, self.port
         except IndexError, e:
             self.view.print_( "Blad(pobieranie informacji z chomika):", e )
             self.view.print_( resp )
-            return False
+            return None, None, None, None
+        
+                
+
+        
+    def __upload(self, filepath, filename, token, stamp, server, port):
+        """
+        Wysylanie pliku znajdujacego sie pod 'filepath' i nazwanie go 'filename'
+        #TODO: Opis i podpis
+        """
         
         #Tworzenie naglowka
         size = os.path.getsize(filepath)
-        header, contenttail =  self.__create_header(self.server, self.port, self.token, self.stamp, filename, size)  
+        header, contenttail =  self.__create_header(server, port, token, stamp, filename, size)  
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
@@ -339,9 +358,9 @@ class Chomik(object):
         sock.send(header)
         
         f = open(filepath,'rb')
-        #pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
         pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = 0, name = filepath)
         self.view.add_progress_bar(pb)
+        last_time = time.time()
         try:
             while True:
                 chunk = f.read(1024)
@@ -349,12 +368,15 @@ class Chomik(object):
                     break
                 sock.send(chunk)
                 pb.update(len(chunk))
-                #TODO: to trzeba bedzie poprawic - osobny watek na widok?update_progress_bars
-                self.view.update_progress_bars()
+                now = time.time()
+                if now - last_time > 0.5:
+                    self.view.update_progress_bars()
+                    last_time = now
             f.close()        
             #self.view.print_( 'Sending tail' )
             sock.send(contenttail)
         finally:
+            self.view.update_progress_bars()
             self.view.delete_progress_bar(pb)
         
         resp = ""
@@ -404,21 +426,27 @@ class Chomik(object):
     
 #####################################################    
     def resume(self, filepath, filename, folder_id, chomik_id, token, server, port, stamp):
-        """
-        Wznawianie uploadowania pliku filepath o nazwie filename o danych: folder_id, chomik_id, token, server, port, stamp
-        """
         self.relogin()
         self.chomik_id = chomik_id
         self.folder_id = folder_id
+        filename_tmp   = change_coding(filename)        
+        filesize_sent = self.__resume_get_tokens(filepath, filename_tmp, token, server, port)
+        if filesize_sent == False:
+            return False
+        else:
+            return self.__resume(filepath, filename_tmp, token, server, port, stamp, filesize_sent)
+
+
+    def __resume_get_tokens(self, filepath, filename, token, server, port):
+        """
+        Pobiera informacje z serwera o tym gdzie i z jakimi parametrami wyslac plik
+        """
         #Pobieranie informacji o serwerze
-        filename     = change_coding(filename)
         filename_len = len(filename)
-        #self.view.print_( filename, filename_len )
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
         sock.connect( (server, int(port) ) )
         tmp = """GET /resume/check/?key={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: {1}:{2}\r\n\r\n""".format(token, server, port)
-        #self.view.print_( tmp )
         sock.send( tmp )
         #Odbieranie odpowiedzi
         resp = ""
@@ -429,19 +457,23 @@ class Chomik(object):
             resp   += tmp
         resp += tmp
         sock.close()
-        #self.view.print_( resp )
         try:
             filesize_sent = int(re.findall( """<resp file_size="([^"]*)" skipThumbnails="[^"]*" res="1"/>""", resp)[0])
+            return filesize_sent
         except IndexError, e:
             self.view.print_( "Nie mozna bylo wznowic pobierania" )
+            self.view.print_( resp )
             return False
         
+
+
+    def __resume(self, filepath, filename, token, server, port, stamp, filesize_sent):
+        """
+        Wznawianie uploadowania pliku filepath o nazwie filename o danych: folder_id, chomik_id, token, server, port, stamp
+        """
         #Tworzenie naglowka
         size  = os.path.getsize(filepath)
         header, contenttail =  self.__create_header(server, port, token, stamp, filename, (size - filesize_sent), resume_from = filesize_sent)  
-        
-        #self.view.print_( header )
-        #self.view.print_( contenttail )
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
@@ -451,9 +483,8 @@ class Chomik(object):
         f = open(filepath,'rb')
         f.seek(filesize_sent)
         pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = filesize_sent, name = filepath)
-        #pb = progress.ProgressMeter(total=size, rate_refresh = 0.5)
-        #pb.update(filesize_sent)
         self.view.add_progress_bar(pb)
+        last_time = time.time()
         try:
             while True:
                 chunk = f.read(1024)
@@ -461,11 +492,14 @@ class Chomik(object):
                     break
                 sock.send(chunk)
                 pb.update(len(chunk))
-                self.view.update_progress_bars()
+                now = time.time()
+                if now - last_time > 0.5:
+                    self.view.update_progress_bars()
+                    last_time = now
             f.close()        
-            #self.view.print_( 'Sending tail' )
             sock.send(contenttail)
         finally:
+            self.view.update_progress_bars()
             self.view.delete_progress_bar(pb)
         
         resp = ""

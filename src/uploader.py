@@ -83,9 +83,9 @@ class Uploader(object):
             
             
     def upload_dir(self, chomikpath, dirpath):
-    	self.view.print_( 'Wznawianie nieudanych transferow' )
-    	self.resume()
-    	self.view.print_( 'Zakonczono probe wznawiania transferow\r\n' )
+        self.view.print_( 'Wznawianie nieudanych transferow' )
+        self.resume()
+        self.view.print_( 'Zakonczono probe wznawiania transferow\r\n' )
         self.view.print_( 'Zmiana katalogow' )
         if not self.chomik.chdirs(chomikpath):
             self.view.print_( 'Nie udalo sie zmienic katalogu w chomiku', chomikpath )
@@ -126,21 +126,22 @@ class Uploader(object):
         self.view.print_( 'Uploadowanie pliku:', filepath )
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
-        except ChomikException, e:
-            self.view.print_( 'Blad:' )
-            self.view.print_( e )
-            #TODO: traceback
-            self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
-            _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
-            self.model.add_notuploaded_resume( filepath, filename, folder_id, chomik_id, token, server, port, stamp )
-            trbck = sys.exc_info()[2]
-            debug(trbck)
-            if type(e.get_excpt()) == KeyboardInterrupt:
-            	raise e.get_excpt()
-            else:
-                return
+            """
+            except ChomikException, e:
+                self.view.print_( 'Blad:' )
+                self.view.print_( e )
+                #TODO: traceback
+                self.view.print_( 'Blad. Plik ', filepath, ' nie zostal wyslany\r\n' )
+                _, filename, folder_id, chomik_id, token, server, port, stamp = e.args()
+                self.model.add_notuploaded_resume( filepath, filename, folder_id, chomik_id, token, server, port, stamp )
+                trbck = sys.exc_info()[2]
+                debug(trbck)
+                if type(e.get_excpt()) == KeyboardInterrupt:
+                    raise e.get_excpt()
+                else:
+                    return
+            """
         except Exception, e:
-            self.model.add_notuploaded_normal(filepath)
             self.view.print_( 'Blad:' )
             self.view.print_( e )
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
@@ -150,7 +151,6 @@ class Uploader(object):
 
         if result == False:
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
-            self.model.add_notuploaded_normal(filepath)
         else:
             self.model.add_uploaded(filepath)
             self.model.remove_notuploaded(filepath)
