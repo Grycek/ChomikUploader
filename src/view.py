@@ -167,7 +167,14 @@ def change_unit_bytes(value):
         return (value/1048576., 'MB')
     else:
         return (value/(1024.**3), 'GB')
-
+    
+def change_unit_time(value):
+    if value < 60:
+        return (value, 's.')
+    elif value < 60*60:
+        return (value/60., 'min')
+    else:
+        return (value/3600., 'h.')
 
 class ProgressBar(object):
     def __init__(self, total = 100, rate_refresh = 0.5, count = 0, name = ""):
@@ -179,7 +186,7 @@ class ProgressBar(object):
         self.rate_refresh = rate_refresh
         
         # dane progress bara
-        self.meter_ticks    = 40
+        self.meter_ticks    = 20
         self.meter_division = float(self.total) / self.meter_ticks
         ##############################
         self.count        = count
@@ -241,29 +248,35 @@ class ProgressBar(object):
         """
         Actualize data to display
         """
-        self.lock.acquire()
-        try:
-            self.meter_value_total   = self.meter_value
-            self.count_total         = self.count
-            self.rate_current_total  = self.rate_current
-        finally:
-            self.lock.release()
+        #self.lock.acquire()
+        #try:
+        self.meter_value_total   = self.meter_value
+        self.count_total         = self.count
+        self.rate_current_total  = self.rate_current
+        #finally:
+        #    self.lock.release()
 
     def get_meter(self, **kw):
         """
         Creating progress bar string
         """
-        self.lock.acquire()
-        try:
-            bar = '-' * self.meter_value_total
-            pad = ' ' * (self.meter_ticks - self.meter_value_total)
-            perc = (float(self.count_total) / self.total) * 100
-            rate_current, unit =  change_unit_bytes(self.rate_current_total)
-            downloaded, unit_d =  change_unit_bytes(self.count_total)
-            total, unit_t      =  change_unit_bytes(self.total)
-        finally:
-            self.lock.release()
-        return '[%s>%s] %d%%  %.1f%s/sec  %.1f%s/%.1f%s' % (bar, pad, perc, rate_current, unit, downloaded, unit_d, total, unit_t)
+        #self.lock.acquire()
+        #try:
+        bar = '-' * self.meter_value_total
+        pad = ' ' * (self.meter_ticks - self.meter_value_total)
+        perc = (float(self.count_total) / self.total) * 100
+        rate_current, unit =  change_unit_bytes(self.rate_current_total)
+        downloaded, unit_d =  change_unit_bytes(self.count_total)
+        total, unit_t      =  change_unit_bytes(self.total)
+        if self.rate_current_total == 0:
+            rest_time      = float("inf")
+            unit_time      = ''
+        else:    
+            rest_time, unit_time = change_unit_time( (self.total - self.count_total)/float(self.rate_current_total) )
+        
+        #finally:
+        #    self.lock.release()
+        return '[%s>%s] %d%%  %.1f%s/sec  %.1f%s/%.1f%s  %.1f%s' % (bar, pad, perc, rate_current, unit, downloaded, unit_d, total, unit_t, rest_time, unit_time)
 
 ###############################################################################################################
 def create_console():
@@ -339,7 +352,7 @@ class View(object):
         for progress_bar in self.progress_bars:
             #TODO: kodowanie
             #sys.stdout.write( change_print_coding(progress_bar.name) )
-            print change_print_coding(progress_bar.name),
+            print change_print_coding(progress_bar.name[-80:]),
             sys.stdout.write('\r\n')
             sys.stdout.write(progress_bar.get_meter())
             sys.stdout.write('\r\n')

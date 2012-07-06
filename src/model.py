@@ -31,6 +31,8 @@ class Model(object):
         """
         self.view                  = view.View()
         self.lock                  = threading.Lock()
+        ##synchronizacja zmiany katalogow w chomiku
+        self.chdirs_lock           = threading.Lock()
         self.notuploaded_file_name = 'notuploaded.txt'
         self.uploaded_file_name    = 'uploaded.txt'
         self.uploaded              = []
@@ -60,6 +62,30 @@ class Model(object):
                 self.notuploaded_normal.append( f.strip() )
         
     
+    def _aux_remove_notuploaded_resume(self, filepath):
+        it = 0
+        while it < len(self.notuploaded_resume):
+            i = self.notuploaded_resume[it]
+            if i[0] == filepath:
+                self.notuploaded_resume.remove(i)
+            it += 1
+            
+    def _aux_remove_notuploaded_normal(self, filepath):
+        it = 0
+        while it < len(self.notuploaded_normal):
+            i = self.notuploaded_normal[it]
+            if i == filepath:
+                self.notuploaded_normal.remove(i)
+            it += 1
+            
+    def _aux_remove_pending(self, filepath):
+        it = 0
+        while it < len(self.pending):
+            i = self.pending[it]
+            if i == filepath:
+                self.pending.remove(i)
+            it += 1
+    
     def add_notuploaded_normal(self, filepath):
         """
         Dodawanie informacji o filepath na liscie notuploaded i w pliku notuploaded.txt
@@ -80,8 +106,9 @@ class Model(object):
         """
         self.lock.acquire()
         try:
-            self.notuploaded_resume = [ i for i in self.notuploaded_resume if i[0] != filepath]
-            self.notuploaded_normal = [ i for i in self.notuploaded_normal if i != filepath]
+            #FIXME:danger
+            self._aux_remove_notuploaded_resume(filepath)
+            self._aux_remove_notuploaded_normal(filepath)
             self._save_notuploaded()
             self.notuploaded_resume.append( (filepath, filename, folder_id, chomik_id, token, host, port, stamp) )
             f = open(self.notuploaded_file_name,'a')
@@ -104,8 +131,9 @@ class Model(object):
         """
         self.lock.acquire()
         try:
-            self.notuploaded_resume = [ i for i in self.notuploaded_resume if i[0] != filepath]
-            self.notuploaded_normal = [ i for i in self.notuploaded_normal if i != filepath]
+            #FIXME:danger
+            self._aux_remove_notuploaded_resume(filepath)
+            self._aux_remove_notuploaded_normal(filepath)
             self._save_notuploaded()
         finally:
             self.lock.release()
@@ -163,7 +191,9 @@ class Model(object):
     def remove_from_pending(self, filepath):
         self.lock.acquire()
         try:
-            self.pending = [i for i in self.pending if i != filepath]
+            #FIXME:danger
+            self._aux_remove_pending(filepath)
+            #self.pending = [i for i in self.pending if i != filepath]
         finally:
             self.lock.release()
         
@@ -182,6 +212,10 @@ class Model(object):
         finally:
             self.lock.release()
         return result
+    
+    def return_chdirlock(self):
+        return self.chdirs_lock
+    
 if __name__ == '__main__':
     m = Model()
     print m.add_uploaded('./tmp.txt')

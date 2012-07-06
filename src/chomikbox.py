@@ -18,9 +18,30 @@ import os
 #import progress
 import view
 import traceback
-from xml.dom.minidom import parseString
 import model
+##################
+from xml.dom import expatbuilder
+from xml.dom import pulldom
+##################
 
+#############################
+def _do_pulldom_parse(func, args, kwargs):
+    events = func(*args, **kwargs)
+    toktype, rootNode = events.getEvent()
+    events.expandNode(rootNode)
+    events.clear()
+    return rootNode
+
+
+def parseString(string, parser=None):
+    """Parse a file into a DOM from a string."""
+    if parser is None:
+        return expatbuilder.parseString(string)
+    else:
+        return _do_pulldom_parse(pulldom.parseString, (string,),
+                                 {'parser': parser})
+                                 
+#############################
 glob_timeout = 240
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
@@ -156,6 +177,7 @@ class Chomik(object):
         _, sep ,resp = resp.partition('<?xml version="1.0"?>')
         if sep == "":
             raise Exception("Blad pobierania listy folderow")
+        #FIXME
         dom = parseString(sep + resp).childNodes[0]
         self.folders_dom = dom
         #self.view.print_( dom.childNodes[0].getAttribute("name") )
@@ -186,6 +208,8 @@ class Chomik(object):
                 if f != []:
                     del(fold[-1])
             else:
+                #we are cutting dirname to the length of 100
+                f = f[:100]
                 fold.append(f)
         folders   = fold
         fold      = []
@@ -258,6 +282,10 @@ class Chomik(object):
         """
         Tworzenie katalogu w katalogu o id = folder_id
         """
+        if len(dirname) > 100:
+            self.view.print_( "Dirname too long" )
+            self.view.print_( "Dirname shortened\r\n" )
+            dirname = dirname[:100]
         self.relogin()
         if folder_id == None:
             folder_id = self.folder_id

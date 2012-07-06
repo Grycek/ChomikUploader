@@ -6,7 +6,7 @@ if sys.platform.startswith('win'):
     import py2exe
     
 setup(name='chomikUploader',
-          version='0.4.0',
+          version='0.4.3',
           author='adam_gr',
           author_email='adam_gr [at] gazeta.pl',
           description='Uploading files on chomikuj.pl',

@@ -15,7 +15,8 @@ import re
 import traceback
 import model
 import threading
-
+#from xml.dom.minidom import parseString
+#import xml.dom.minidom
 
 def debug_fun(tb):
     """
@@ -74,7 +75,7 @@ class Uploader(object):
         self.password         = password
         self.notuploaded_file = 'notuploaded.txt'
         self.uploaded_file    = 'uploaded.txt'
-        self.chomik = Chomik()
+        self.chomik = Chomik(self.view, self.model)
         if self.user == None:
             self.user     = raw_input('Podaj nazwe uzytkownika:\n')
         if self.password == None:
@@ -110,9 +111,14 @@ class Uploader(object):
         self.resume()
         self.view.print_( 'Zakonczono probe wznawiania transferow\r\n' )
         self.view.print_( 'Zmiana katalogow' )
-        if not self.chomik.chdirs(chomikpath):
-            self.view.print_( 'Nie udalo sie zmienic katalogu w chomiku', chomikpath )
-            sys.exit(1)
+        lock = self.model.return_chdirlock()
+        lock.acquire()
+        try:
+            if not self.chomik.chdirs(chomikpath):
+                self.view.print_( 'Nie udalo sie zmienic katalogu w chomiku', chomikpath )
+                sys.exit(1)
+        finally:
+            lock.release()
         self.__upload_aux(dirpath)
 
 
@@ -174,6 +180,8 @@ class Uploader(object):
         """
         Zmiana pozycji na chomiku i wyslanie katalogu
         """
+        lock = self.model.return_chdirlock()
+        lock.acquire()
         try:
             changed = self.chomik.chdirs(dr)
         except Exception, e:
@@ -184,6 +192,8 @@ class Uploader(object):
                 debug_fun(trbck)
             time.sleep(60)
             return
+        finally:
+            lock.release()
         if changed != True:
             self.view.print_( "Nie udalo sie zmienic katalogu", dr  )
             return
