@@ -191,7 +191,7 @@ class Chomik(object):
         Pobiera liste folderow chomika.
         """
         self.relogin()
-        xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , 0), ('depth' , 0) ])]
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , '0'), ('depth' , 0) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Folders").strip()
         xml_len = len(xml_content)
                 
@@ -245,7 +245,7 @@ class Chomik(object):
                 fold.append(f)
         folders   = fold
         fold      = []
-        folder_id = 0
+        folder_id = '0'
         #pobieranie listy folderow
         result, dom, folder_id = self.__access_node(folders)
         if result == True:
@@ -270,7 +270,7 @@ class Chomik(object):
         """
         dom       = self.folders_dom
         fold      = []
-        folder_id = 0
+        folder_id = '0'
         for f in folders_list:
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
             if type(list_of_subfolders) == dict:
@@ -279,7 +279,7 @@ class Chomik(object):
                 for i in list_of_subfolders:
                     if to_unicode(f) == i.get("name",None):
                         dom       = i
-                        folder_id = int(i["id"])
+                        folder_id = i["id"]
             else:
                 return (False, None, None)
         return (True,dom, folder_id)
@@ -287,7 +287,7 @@ class Chomik(object):
 
     
     def __create_nodes(self, folder_list):
-        folder_id = 0
+        folder_id = '0'
         fold      = []
         self.get_dir_list()
         dom       = self.folders_dom
@@ -299,7 +299,7 @@ class Chomik(object):
                 for i in list_of_subfolders:
                     if to_unicode(f) == i.get("name",None):
                         dom       = i
-                        folder_id = int(i["id"])
+                        folder_id = i["id"]
                         fold.append(f)
                         #self.view.print_( folder_id, f )
             else:
