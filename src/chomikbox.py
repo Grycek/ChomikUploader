@@ -349,8 +349,6 @@ class Chomik(object):
             self.view.print_( "Creation success\r\n" )
             return True
         else:
-            print status
-            print resp_dict
             error_msg = resp_dict['s:Envelope']['s:Body']['AddFolderResponse']['AddFolderResult']['errorMessage']['#text']
             if error_msg == 'NameExistsAtDestination':
                 return True
@@ -358,6 +356,36 @@ class Chomik(object):
                 self.view.print_( "Creation fail" )
                 self.view.print_( error_msg )
                 return False
+
+    def rmdir(self):
+        """
+        Usuwanie obecnego katalogu
+        """
+        self.relogin()
+        self.view.print_( "Removing current directory" )
+        ########################
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('folderId' , self.folder_id), ('force', '1') ])]
+        xml_content = self.soap.soap_dict_to_xml(xml_dict, "RemoveFolder").strip()
+        xml_len = len(xml_content)
+        header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
+        header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/RemoveFolder\r\n"""
+        header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        header += """Content-Length: %d\r\n""" % xml_len
+        header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Language: pl-PL,en,*\r\n"""
+        header += """User-Agent: Mozilla/5.0\r\n"""
+        header += """Host: box.chomikuj.pl\r\n\r\n"""
+        header += xml_content
+        resp = self.send(header)
+        resp_dict =  self.soap.soap_xml_to_dict(resp)
+        status = resp_dict['s:Envelope']['s:Body']['RemoveFolderResponse']['RemoveFolderResult']['a:status']
+        if status == 'Ok':
+            self.view.print_( "Removal success\r\n" )
+            return True
+        else:
+            self.view.print_( "Removal fail" )
+            self.view.print_( status )
+            return False
 
 
         
