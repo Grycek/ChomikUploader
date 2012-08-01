@@ -279,7 +279,6 @@ class Chomik(object):
                 for i in list_of_subfolders:
                     if to_unicode(f) == i.get("name",None):
                         dom       = i
-                        print i
                         folder_id = int(i["id"])
             else:
                 return (False, None, None)
@@ -329,7 +328,7 @@ class Chomik(object):
             folder_id = self.folder_id
         dirname   = change_coding(dirname)
         self.view.print_( "Creating", dirname, "directory" )
-        dirname   = urllib2.quote(dirname)
+        #dirname   = urllib2.quote(dirname)
         ########################
         xml_dict = [('ROOT',[('token' , self.ses_id), ('newFolderId' , folder_id), ('name', dirname) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "AddFolder").strip()
@@ -345,15 +344,20 @@ class Chomik(object):
         header += xml_content
         resp = self.send(header)
         resp_dict =  self.soap.soap_xml_to_dict(resp)
-        status = resp_dict['s:Envelope']['s:Body']['AddFolderResponse']['AddFolderResult']['status']
-        #TODO - nie wiem kiedy chomik uznaje, ze utworzenie katalogu sie nie udalo
-        #wiec na razie uznaje za blad,jesli w odpowiedzi nie otrzymamy "<resp res="1" />"
+        status = resp_dict['s:Envelope']['s:Body']['AddFolderResponse']['AddFolderResult']['status']['#text']
         if status == 'Ok':
             self.view.print_( "Creation success\r\n" )
             return True
         else:
-            self.view.print_( "Creation fail\r\n" )
-            return False
+            print status
+            print resp_dict
+            error_msg = resp_dict['s:Envelope']['s:Body']['AddFolderResponse']['AddFolderResult']['errorMessage']['#text']
+            if error_msg == 'NameExistsAtDestination':
+                return True
+            else:
+                self.view.print_( "Creation fail" )
+                self.view.print_( error_msg )
+                return False
 
 
         
