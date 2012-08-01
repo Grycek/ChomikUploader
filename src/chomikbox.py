@@ -109,10 +109,12 @@ class Chomik(object):
         else:
             self.model   = model_
         self.soap          = SOAP()
-        self.folders_dom   = ''
+        ########
+        #root folder
+        self.folders_dom   = {}
         self.ses_id        = ''
-        self.chomik_id     = ''
-        self.folder_id     = 0
+        self.chomik_id     = '0'
+        self.folder_id     = '0'
         self.cur_fold      = []
         self.user          = ''
         self.password      = ''
@@ -142,7 +144,7 @@ class Chomik(object):
         self.password      = password
         if self.relogin() == True:
             self.get_dir_list()
-            return False
+            return True
         else:
             return False
 
@@ -187,7 +189,6 @@ class Chomik(object):
     def get_dir_list(self):
         """
         Pobiera liste folderow chomika.
-        #TODO - dopisac test
         """
         self.relogin()
         xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , 0), ('depth' , 0) ])]
@@ -205,8 +206,13 @@ class Chomik(object):
         header += xml_content
         resp = self.send(header)
         resp_dict =  self.soap.soap_xml_to_dict(resp)
-        print resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']
-        
+        status = resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:status']
+        if status != 'Ok':
+            self.view.print_( "Blad(pobieranie listy folderow):" )
+            self.view.print_( status )        
+            return False
+        self.folders_dom = resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:folder']
+        return True
 
 
     
@@ -266,13 +272,15 @@ class Chomik(object):
         fold      = []
         folder_id = 0
         for f in folders_list:
-            print dom.childNodes
-            print [i.getAttribute("name") for i in dom.childNodes]
-            if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
-                for i in dom.childNodes:
-                    if to_unicode(f) == i.getAttribute("name"):
+            list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
+            if type(list_of_subfolders) == dict:
+                list_of_subfolders = [list_of_subfolders]
+            if to_unicode(f) in [i.get("name",None) for i in list_of_subfolders ]:
+                for i in list_of_subfolders:
+                    if to_unicode(f) == i.get("name",None):
                         dom       = i
-                        folder_id = int(i.getAttribute("id"))
+                        print i
+                        folder_id = int(i["id"])
             else:
                 return (False, None, None)
         return (True,dom, folder_id)
@@ -285,12 +293,14 @@ class Chomik(object):
         self.get_dir_list()
         dom       = self.folders_dom
         for f in folder_list:
-            if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
-                for i in dom.childNodes:
-                    if to_unicode(f) == i.getAttribute("name"):
-                        dom            = i
-                        #
-                        folder_id = int(i.getAttribute("id"))
+            list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
+            if type(list_of_subfolders) == dict:
+                list_of_subfolders = [list_of_subfolders]
+            if to_unicode(f) in [i.get("name",None) for i in list_of_subfolders ]:
+                for i in list_of_subfolders:
+                    if to_unicode(f) == i.get("name",None):
+                        dom       = i
+                        folder_id = int(i["id"])
                         fold.append(f)
                         #self.view.print_( folder_id, f )
             else:
@@ -320,23 +330,25 @@ class Chomik(object):
         dirname   = change_coding(dirname)
         self.view.print_( "Creating", dirname, "directory" )
         dirname   = urllib2.quote(dirname)
-        #Laczenie sie
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )
-        #Prosba o liste folderow
-        sock.send( """GET /folderoper/?sess_id={0}&chomik_id={1}&oper=0&folder1={2}&folder2=-1&name={3}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""".format(self.ses_id, self.chomik_id, folder_id ,dirname) )
-        #Odbieranie odpowiedzi
-        resp = ""
-        while True:
-            tmp = sock.recv(640) 
-            if tmp ==  '':
-                break
-            resp   += tmp
-        resp += tmp
+        ########################
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('newFolderId' , folder_id), ('name', dirname) ])]
+        xml_content = self.soap.soap_dict_to_xml(xml_dict, "AddFolder").strip()
+        xml_len = len(xml_content)
+        header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
+        header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/AddFolder\r\n"""
+        header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        header += """Content-Length: %d\r\n""" % xml_len
+        header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Language: pl-PL,en,*\r\n"""
+        header += """User-Agent: Mozilla/5.0\r\n"""
+        header += """Host: box.chomikuj.pl\r\n\r\n"""
+        header += xml_content
+        resp = self.send(header)
+        resp_dict =  self.soap.soap_xml_to_dict(resp)
+        status = resp_dict['s:Envelope']['s:Body']['AddFolderResponse']['AddFolderResult']['status']
         #TODO - nie wiem kiedy chomik uznaje, ze utworzenie katalogu sie nie udalo
         #wiec na razie uznaje za blad,jesli w odpowiedzi nie otrzymamy "<resp res="1" />"
-        if '<resp res="1" />' in resp:
+        if status == 'Ok':
             self.view.print_( "Creation success\r\n" )
             return True
         else:
