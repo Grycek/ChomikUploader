@@ -367,6 +367,7 @@ class Chomik(object):
         filename_tmp               = change_coding(filename)
         self.model.add_notuploaded_normal(filepath)
         token, stamp, server, port = self.__upload_get_tokens(filepath, filename_tmp)
+        #saving information for resuming
         self.model.add_notuploaded_resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
         if token == None:
             return False
@@ -382,24 +383,31 @@ class Chomik(object):
         Pobiera informacje z serwera o tym gdzie i z jakimi parametrami wyslac plik
         """
         #Pobieranie informacji o serwerze
-        filename_len = len(filename)    
-        sock         = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )        
-        tmp = """POST /upload/token/?chomik_id={1}&folder_id={2}&sess_id={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\nContent-Length: {3}\r\n\r\n{4}""".format(self.ses_id, self.chomik_id, self.folder_id, filename_len, filename)
-        sock.send( tmp )
-        
-        resp = ""
-        while True:
-            tmp = sock.recv(640) 
-            if tmp ==  '':
-                break
-            resp   += tmp
-        resp += tmp
-        sock.close()
-        
+        filename_len = len(filename)
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('folderId' , self.folder_id), ('fileName', filename) ])]
+        xml_content = self.soap.soap_dict_to_xml(xml_dict, "UploadToken").strip()
+        xml_len = len(xml_content)
+        header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
+        header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/UploadToken\r\n"""
+        header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        header += """Content-Length: %d\r\n""" % xml_len
+        header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Language: pl-PL,en,*\r\n"""
+        header += """User-Agent: Mozilla/5.0\r\n"""
+        header += """Host: box.chomikuj.pl\r\n\r\n"""
+        header += xml_content
+        resp = self.send(header)
+        resp_dict =  self.soap.soap_xml_to_dict(resp)
+        status = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:status']
+        if status != 'Ok':
+            self.view.print_( "Blad(pobieranie informacji z chomika):" )
+            self.view.print_( status )
+            return None, None, None, None
         try:
-            self.token, self.stamp, self.server, self.port = re.findall( """<resp res="1" token="([^"]*)" stamp="(\d*)" server="([^:]*):(\d*)" />""", resp)[0]
+            self.token  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:key']
+            self.stamp  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:stamp']
+            self.server = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:server']
+            self.server, _, self.port = self.server.partition(":")
             return self.token, self.stamp, self.server, self.port
         except IndexError, e:
             self.view.print_( "Blad(pobieranie informacji z chomika):", e )
