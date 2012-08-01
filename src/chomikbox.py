@@ -15,13 +15,15 @@ import re
 import sys
 import time
 import os
+import zlib
 #import progress
 import view
 import traceback
 import model
 ##################
-from xml.dom import expatbuilder
-from xml.dom import pulldom
+import xml.parsers.expat
+from xml.dom.minidom import Document
+from soap import SOAP
 ##################
 
 #############################
@@ -45,8 +47,10 @@ def parseString(string, parser=None):
 glob_timeout = 240
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
-login_ip   = "main.box.chomikuj.pl"
-login_port = 8083
+#login_ip   = "main.box.chomikuj.pl"
+login_ip   = "box.chomikuj.pl"
+#login_port = 8083
+login_port = 80
 
 
 def change_coding(text):
@@ -104,6 +108,7 @@ class Chomik(object):
             self.model   = model.Model()
         else:
             self.model   = model_
+        self.soap          = SOAP()
         self.folders_dom   = ''
         self.ses_id        = ''
         self.chomik_id     = ''
@@ -113,6 +118,20 @@ class Chomik(object):
         self.password      = ''
 
 
+    def send(self, content):
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(glob_timeout)
+        sock.connect( (login_ip, login_port) )
+        sock.send(content)
+        resp = ""
+        while True:
+            tmp = sock.recv(640) 
+            if tmp ==  '':
+                break
+            resp   += tmp
+        sock.close()
+        return resp.partition("\r\n\r\n")[2]
+                
         
     def login(self, user, password):
         """
@@ -123,7 +142,7 @@ class Chomik(object):
         self.password      = password
         if self.relogin() == True:
             self.get_dir_list()
-            return True
+            return False
         else:
             return False
 
@@ -131,22 +150,34 @@ class Chomik(object):
     
     def relogin(self):
         password = hashlib.md5(self.password).hexdigest()
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )
-        sock.send("""GET /auth/?name=""" + self.user + """&pass=""" + password + """&v=3 HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""" )
-        #sock.send( """GET /auth/?name={0}&pass={1}&v=3& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""".format(self.user,password) )
-        resp = sock.recv(1024)
-        sock.close()
+        xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version','2.0.4.3') ]) ])]
+        xml_content = self.soap.soap_dict_to_xml(xml_dict, "Auth").strip()
+        xml_len = len(xml_content)
+        header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
+        header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Auth\r\n"""
+        header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        header += """Content-Length: %d\r\n""" % xml_len
+        header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Language: pl-PL,en,*\r\n"""
+        header += """User-Agent: Mozilla/5.0\r\n"""
+        header += """Host: box.chomikuj.pl\r\n\r\n"""
+        header += xml_content
+        resp = self.send(header)
+        resp_dict =  self.soap.soap_xml_to_dict(resp)
+        status = resp_dict['s:Envelope']['s:Body']['AuthResponse']['AuthResult']['a:status']
+        if status != 'Ok':
+            self.view.print_( "Blad(relogin):" )
+            self.view.print_( status )
+            return False
         try:
-            ses_id, chomik_id = re.findall('sess_id="([^"]*)" chomik_id="(\d*)"' ,resp)[0]
+            chomik_id = resp_dict['s:Envelope']['s:Body']['AuthResponse']['AuthResult']['a:hamsterId']
+            ses_id    = resp_dict['s:Envelope']['s:Body']['AuthResponse']['AuthResult']['a:token'] 
             self.ses_id    = ses_id
             self.chomik_id = chomik_id
         except IndexError, e:
             self.view.print_( "Blad(relogin):" )
             self.view.print_( e )
             self.view.print_( resp )
-            #TODO: tracebar
             return False
         else:
             return True
@@ -159,28 +190,23 @@ class Chomik(object):
         #TODO - dopisac test
         """
         self.relogin()
-        #Laczenie sie
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )
-        #Prosba o liste folderow
-        sock.send( """GET /folders/?sess_id={0}&chomik_id={1}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: main.box.chomikuj.pl:8083\r\n\r\n""".format(self.ses_id, self.chomik_id) )
-        #Odbieranie odpowiedzi
-        resp = ""
-        while True:
-            tmp = sock.recv(640) 
-            if tmp ==  '' or '</chomik>' in resp:
-                break
-            resp   += tmp
-        resp += tmp
-        #Parsowanie odpowiedzi
-        _, sep ,resp = resp.partition('<?xml version="1.0"?>')
-        if sep == "":
-            raise Exception("Blad pobierania listy folderow")
-        #FIXME
-        dom = parseString(sep + resp).childNodes[0]
-        self.folders_dom = dom
-        #self.view.print_( dom.childNodes[0].getAttribute("name") )
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , 0), ('depth' , 0) ])]
+        xml_content = self.soap.soap_dict_to_xml(xml_dict, "Folders").strip()
+        xml_len = len(xml_content)
+                
+        header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
+        header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Folders\r\n"""
+        header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        header += """Content-Length: %d\r\n""" % xml_len
+        header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Language: pl-PL,en,*\r\n"""
+        header += """User-Agent: Mozilla/5.0\r\n"""
+        header += """Host: box.chomikuj.pl\r\n\r\n"""
+        header += xml_content
+        resp = self.send(header)
+        resp_dict =  self.soap.soap_xml_to_dict(resp)
+        print resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']
+        
 
 
     
@@ -240,6 +266,8 @@ class Chomik(object):
         fold      = []
         folder_id = 0
         for f in folders_list:
+            print dom.childNodes
+            print [i.getAttribute("name") for i in dom.childNodes]
             if to_unicode(f) in [i.getAttribute("name") for i in dom.childNodes]:
                 for i in dom.childNodes:
                     if to_unicode(f) == i.getAttribute("name"):
