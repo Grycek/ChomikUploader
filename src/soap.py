@@ -1,5 +1,7 @@
 from lxml import etree
 from itertools import groupby
+from xml.dom.minidom import Document
+import copy
 
 
 class SOAP(object):
@@ -31,8 +33,7 @@ class SOAP(object):
 
 ###################################################################    
 ## {{{ http://code.activestate.com/recipes/577739/ (r4)
-from xml.dom.minidom import Document
-import copy
+
 
 class dict2xml(object):
     def __init__(self, structure):
@@ -60,8 +61,6 @@ class dict2xml(object):
         return self.doc.toprettyxml(indent="").replace("\n", "").replace('<?xml version="1.0" ?>', '')
 
 ##################################################################
-#!/usr/bin/env python
-import xml.parsers.expat
 
 __author__ = 'Martin Blech'
 __version__ = '0.1.dev'
@@ -194,6 +193,7 @@ def parse(xml_input, *args, **kwargs):
     if hasattr(xml_input, 'read'):
         parser.ParseFile(xml_input)
     else:
+        print xml_input
         parser.Parse(xml_input, True)
     return handler.item
 

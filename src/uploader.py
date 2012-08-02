@@ -15,8 +15,7 @@ import re
 import traceback
 import model
 import threading
-#from xml.dom.minidom import parseString
-#import xml.dom.minidom
+from soap import SOAP
 
 def debug_fun(tb):
     """

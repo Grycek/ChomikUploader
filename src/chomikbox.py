@@ -21,27 +21,7 @@ import view
 import traceback
 import model
 ##################
-import xml.parsers.expat
-from xml.dom.minidom import Document
 from soap import SOAP
-##################
-
-#############################
-def _do_pulldom_parse(func, args, kwargs):
-    events = func(*args, **kwargs)
-    toktype, rootNode = events.getEvent()
-    events.expandNode(rootNode)
-    events.clear()
-    return rootNode
-
-
-def parseString(string, parser=None):
-    """Parse a file into a DOM from a string."""
-    if parser is None:
-        return expatbuilder.parseString(string)
-    else:
-        return _do_pulldom_parse(pulldom.parseString, (string,),
-                                 {'parser': parser})
                                  
 #############################
 glob_timeout = 240
