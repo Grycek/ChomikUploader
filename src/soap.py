@@ -1,6 +1,7 @@
 from lxml import etree
 from itertools import groupby
 from xml.dom.minidom import Document
+import xml.parsers.expat
 import copy
 
 
@@ -16,7 +17,7 @@ class SOAP(object):
         method = i.e Auth
         '''
         xml  = dict2xml(soap_dict)
-        text = xml.display().replace("<ROOT>", "")
+        text = xml.replace("<ROOT>", "")
         text = text.replace("</ROOT>", "")
         prefix = """<?xml version="1.0" encoding="UTF-8"?><s:Envelope xmlns:s="http://schemas.xmlsoap.org/soap/envelope/" s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/"><s:Body>"""
         prefix += "<" + method + ' xmlns="http://chomikuj.pl/"' + '>'
@@ -32,33 +33,15 @@ class SOAP(object):
 
 
 ###################################################################    
-## {{{ http://code.activestate.com/recipes/577739/ (r4)
 
+def dict2xml(xml_list):
+    if type(xml_list) == list:
+        return "".join([dict2xml(i) for i in xml_list])
+    elif type(xml_list) == tuple:
+        return "<" + xml_list[0] + ">" + dict2xml(xml_list[1])  + "</" + xml_list[0] + ">"
+    else:
+        return str(xml_list)
 
-class dict2xml(object):
-    def __init__(self, structure):
-        self.doc     = Document()
-        if len(structure) == 1:
-            #rootName    = str(structure.keys()[0])
-            rootName    = str(structure[0][0])
-            self.root   = self.doc.createElement(rootName)
-
-            self.doc.appendChild(self.root)
-            self.build(self.root, structure[0][1])
-
-    def build(self, father, structure):
-        if type(structure) == list:
-            for elem in structure:
-                tag = self.doc.createElement(elem[0])
-                father.appendChild(tag)
-                self.build(tag, elem[1])
-        else:
-            data    = str(structure)
-            tag     = self.doc.createTextNode(data)
-            father.appendChild(tag)
-    
-    def display(self):
-        return self.doc.toprettyxml(indent="").replace("\n", "").replace('<?xml version="1.0" ?>', '')
 
 ##################################################################
 
@@ -193,7 +176,6 @@ def parse(xml_input, *args, **kwargs):
     if hasattr(xml_input, 'read'):
         parser.ParseFile(xml_input)
     else:
-        print xml_input
         parser.Parse(xml_input, True)
     return handler.item
 
@@ -210,7 +192,7 @@ if __name__ == '__main__':
     example = [('ROOT',[('name' , user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version','2.0.4.3') ]) ])]
     #example = [('ROOT', [('client', 'w')])]
     #example = {'ROOT':{'client':{'version':'2.0.4.3','name':'chomikbox' }, 'ver' : '4', 'name' : 'tmp_chomik1', 'passHash': 'ba2e57cbd8546cffd7db6bfd4077758b'}}
-    print dict2xml(example).display()
-    print dict2xml(example).display()
+    print dict2xml(example)
+    print dict2xml(example)
     
     print s.soap_dict_to_xml(example, "Auth")

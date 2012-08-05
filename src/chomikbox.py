@@ -1,12 +1,12 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*- 
-# Author: Adam Grycner (adam_gr [at] gazeta.pl)
+# Author: Adam (adam_gr [at] gazeta.pl)
 #
-# Written: 12/11/2011
+# Written: 05/08/2012
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.4
+# Ver: 0.5
 
 import socket
 import urllib2
@@ -159,7 +159,7 @@ class Chomik(object):
         except IndexError, e:
             self.view.print_( "Blad(relogin):" )
             self.view.print_( e )
-            self.view.print_( resp )
+            #self.view.print_( resp )
             return False
         else:
             return True
@@ -174,7 +174,6 @@ class Chomik(object):
         xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , '0'), ('depth' , 0) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Folders").strip()
         xml_len = len(xml_content)
-                
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Folders\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
@@ -437,7 +436,7 @@ class Chomik(object):
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (self.server, int(self.port) ) )
+        sock.connect( (server, int(port) ) )
         sock.send(header)
         
         f = open(filepath,'rb')

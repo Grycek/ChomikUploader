@@ -1,12 +1,12 @@
 #!/usr/bin/env python 
 # -*- coding: utf-8 -*- 
-# Author: Adam Grycner (adam_gr [at] gazeta.pl)
+# Author: Adam (adam_gr [at] gazeta.pl)
 #
 # Written: 12/11/2011
 #
 # Released under: GNU GENERAL PUBLIC LICENSE
 #
-# Ver: 0.4
+# Ver: 0.5
 
 import view
 from chomikbox import *
@@ -15,7 +15,8 @@ import re
 import traceback
 import model
 import threading
-from soap import SOAP
+import select
+##########################################
 
 def debug_fun(tb):
     """
@@ -52,7 +53,7 @@ class UploaderThread(threading.Thread):
         self.uploader   = Uploader(user, password, view_, model_)
         self.chomikpath = chomikpath
         self.dirpath    = dirpath
-        self.daemon     = True
+        self.daemon     = False
     
     def run(self):
         self.uploader.upload_dir(self.chomikpath, self.dirpath)
@@ -258,8 +259,7 @@ class Uploader(object):
         for i in xrange(n):
             upl = UploaderThread(self.user, self.password, chomikpath, dirpath, view_ = self.view, model_ = self.model)
             upl.start()
-        while threading.active_count() > 1:
-            time.sleep(1.)
-
+        #while threading.active_count() > 1:
+        #    time.sleep(1000.)
 if __name__ == '__main__':
     pass
