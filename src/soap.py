@@ -1,4 +1,3 @@
-from lxml import etree
 from itertools import groupby
 from xml.dom.minidom import Document
 import xml.parsers.expat

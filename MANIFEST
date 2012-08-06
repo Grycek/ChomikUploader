@@ -7,3 +7,4 @@ src/uploader.py
 src/chomikbox.py
 src/view.py
 src/model.py
+src/soap.py
