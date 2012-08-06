@@ -21,10 +21,41 @@ import view
 import traceback
 import model
 import time
+import cgi
 ##################
 from soap import SOAP
-                                 
-#############################
+###########################################################
+import htmlentitydefs, re
+
+_char = re.compile(r'&(\w+?);')
+_dec  = re.compile(r'&#(\d{2,4});')
+_hex  = re.compile(r'&#x(\d{2,4});')
+
+def _char_unescape(m, defs=htmlentitydefs.entitydefs):
+    try:
+        return defs[m.group(1)]
+    except KeyError:
+        return m.group(0)
+
+def unescape(string):
+    """back replace html-safe sequences to special characters
+        >>> unescape('&lt; &amp; &gt;')
+        '< & >'
+        >>> unescape('&#39;')
+        "'"
+        >>> unescape('&#x27;')
+        "'"
+    
+    full list of sequences: htmlentitydefs.entitydefs
+    """
+    result = _hex.sub(lambda x: unichr(int(x.group(1), 16)),\
+        _dec.sub(lambda x: unichr(int(x.group(1))),\
+            _char.sub(_char_unescape, string)))
+    if string.__class__ != unicode:
+        return result.encode('utf-8')
+    else:
+        return result
+###########################################################
 glob_timeout = 240
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
@@ -51,6 +82,14 @@ def to_unicode(text):
     except Exception, e:
         print e
     return text
+
+
+def escape_name(text):  
+    return cgi.escape(text)
+
+def unescape_name(text):
+    return unescape(text)
+    
 
 
 
@@ -266,9 +305,10 @@ class Chomik(object):
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
             if type(list_of_subfolders) == dict:
                 list_of_subfolders = [list_of_subfolders]
-            if to_unicode(f) in [i.get("name",None) for i in list_of_subfolders ]:
+            name = to_unicode(f)
+            if name in [unescape_name(i.get("name","")) for i in list_of_subfolders ]:
                 for i in list_of_subfolders:
-                    if to_unicode(f) == i.get("name",None):
+                    if name == unescape_name(i.get("name","")):
                         dom       = i
                         folder_id = i["id"]
                         break
@@ -287,9 +327,10 @@ class Chomik(object):
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
             if type(list_of_subfolders) == dict:
                 list_of_subfolders = [list_of_subfolders]
-            if to_unicode(f) in [i.get("name",None) for i in list_of_subfolders ]:
+            name = to_unicode(f)
+            if name in [unescape_name(i.get("name","")) for i in list_of_subfolders ]:
                 for i in list_of_subfolders:
-                    if to_unicode(f) == i.get("name",None):
+                    if name == unescape_name(i.get("name","")):
                         dom       = i
                         folder_id = i["id"]
                         fold.append(f)
@@ -322,6 +363,7 @@ class Chomik(object):
             folder_id = self.folder_id
         dirname   = change_coding(dirname)
         self.view.print_( "Creating", dirname, "directory" )
+        dirname   = escape_name(dirname)
         #dirname   = urllib2.quote(dirname)
         ########################
         xml_dict = [('ROOT',[('token' , self.ses_id), ('newFolderId' , folder_id), ('name', dirname) ])]
@@ -387,6 +429,7 @@ class Chomik(object):
     def upload(self, filepath, filename):
         self.relogin()
         filename_tmp               = change_coding(filename)
+        filename_tmp               = escape_name(filename_tmp)
         self.model.add_notuploaded_normal(filepath)
         token, stamp, server, port = self.__upload_get_tokens(filepath, filename_tmp)
         #saving information for resuming
