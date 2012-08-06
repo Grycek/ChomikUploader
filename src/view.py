@@ -306,7 +306,7 @@ def singleton(cls):
     return getinstance
 
 
-@singleton
+#@singleton
 class View(object):
     """
     View object (displaying informations)

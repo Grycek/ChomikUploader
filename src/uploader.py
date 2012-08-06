@@ -53,7 +53,7 @@ class UploaderThread(threading.Thread):
         self.uploader   = Uploader(user, password, view_, model_)
         self.chomikpath = chomikpath
         self.dirpath    = dirpath
-        self.daemon     = False
+        self.daemon     = True
     
     def run(self):
         self.uploader.upload_dir(self.chomikpath, self.dirpath)
@@ -259,7 +259,8 @@ class Uploader(object):
         for i in xrange(n):
             upl = UploaderThread(self.user, self.password, chomikpath, dirpath, view_ = self.view, model_ = self.model)
             upl.start()
-        #while threading.active_count() > 1:
-        #    time.sleep(1000.)
+        while threading.active_count() > 1:
+            time.sleep(1.)
+                
 if __name__ == '__main__':
     pass

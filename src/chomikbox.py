@@ -436,7 +436,8 @@ class Chomik(object):
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (server, int(port) ) )
+        ip = socket.gethostbyname_ex(server)[2][0]
+        sock.connect( ( ip , int(port) ) )
         sock.send(header)
         
         f = open(filepath,'rb')
