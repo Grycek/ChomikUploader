@@ -172,12 +172,12 @@ class Chomik(object):
         
         
 
-    def get_dir_list(self):
+    def get_dir_list(self, folder_id = 0, folder_dom_root = {}):
         """
         Pobiera liste folderow chomika.
         """
         self.relogin()
-        xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , '0'), ('depth' , 0) ])]
+        xml_dict = [('ROOT',[('token' , self.ses_id), ('hamsterId', self.chomik_id), ('folderId' , folder_id), ('depth' , 0) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Folders").strip()
         xml_len = len(xml_content)
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
@@ -196,7 +196,13 @@ class Chomik(object):
             self.view.print_( "Blad(pobieranie listy folderow):" )
             self.view.print_( status )        
             return False
-        self.folders_dom = resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:folder']
+        if folder_id == 0:
+            self.folders_dom = resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:folder']
+        else:
+            #print "Get list dir:",  resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:folder']
+            #FIXME danger
+            folder_dom_root[u'folders'] = resp_dict['s:Envelope']['s:Body']['FoldersResponse']['FoldersResult']['a:folder'][u'folders']
+            return True
         return True
 
 
@@ -265,6 +271,7 @@ class Chomik(object):
                     if to_unicode(f) == i.get("name",None):
                         dom       = i
                         folder_id = i["id"]
+                        break
             else:
                 return (False, None, None)
         return (True,dom, folder_id)
@@ -274,7 +281,7 @@ class Chomik(object):
     def __create_nodes(self, folder_list):
         folder_id = '0'
         fold      = []
-        self.get_dir_list()
+        #self.get_dir_list()
         dom       = self.folders_dom
         for f in folder_list:
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
@@ -286,10 +293,12 @@ class Chomik(object):
                         dom       = i
                         folder_id = i["id"]
                         fold.append(f)
+                        break
                         #self.view.print_( folder_id, f )
             else:
+                #TODO: update self.folder_dom
                 self.mkdir(f, folder_id)
-                self.get_dir_list()
+                self.get_dir_list(folder_id, dom)
                 result, dom, folder_id = self.__access_node(fold + [f])
                 #jezeli nie udalo sie ani utworzyc ani przejsc, to zwroc False
                 if result == False:
@@ -534,7 +543,8 @@ class Chomik(object):
         filename_len = len(filename)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (server, int(port) ) )
+        ip = socket.gethostbyname_ex(server)[2][0]
+        sock.connect( (ip, int(port) ) )
         tmp = """GET /resume/check/?key={0}& HTTP/1.1\r\nConnection: close\r\nUser-Agent: ChomikBox\r\nHost: {1}:{2}\r\n\r\n""".format(token, server, port)
         sock.send( tmp )
         #Odbieranie odpowiedzi
@@ -566,7 +576,8 @@ class Chomik(object):
         
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(glob_timeout)
-        sock.connect( (server,int(port) ) )
+        ip = socket.gethostbyname_ex(server)[2][0]
+        sock.connect( (ip,int(port) ) )
         sock.send(header)
         
         f = open(filepath,'rb')
