@@ -20,6 +20,7 @@ import zlib
 import view
 import traceback
 import model
+import time
 ##################
 from soap import SOAP
                                  
@@ -98,6 +99,7 @@ class Chomik(object):
         self.cur_fold      = []
         self.user          = ''
         self.password      = ''
+        self.last_login    = 0
 
 
     def send(self, content):
@@ -131,6 +133,9 @@ class Chomik(object):
 
     
     def relogin(self):
+        #we log in recently
+        if self.last_login + 3600 > time.time():
+            return True
         password = hashlib.md5(self.password).hexdigest()
         xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version','2.0.4.3') ]) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Auth").strip()
