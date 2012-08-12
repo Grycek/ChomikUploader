@@ -88,7 +88,12 @@ def escape_name(text):
     return cgi.escape(text)
 
 def unescape_name(text):
-    return unescape(text)
+    text = text.replace("&quot;", '"')
+    text = text.replace("&apos;", "'")
+    text = text.replace("&lt;", "<")
+    text = text.replace("&gt;", ">")
+    text = text.replace("&amp;", "&")
+    return text
     
 
 
@@ -173,7 +178,7 @@ class Chomik(object):
     
     def relogin(self):
         #we log in recently
-        if self.last_login + 3600 > time.time():
+        if self.last_login + 300 > time.time():
             return True
         self.last_login = time.time()
         password = hashlib.md5(self.password).hexdigest()
@@ -271,7 +276,7 @@ class Chomik(object):
                     del(fold[-1])
             else:
                 #we are cutting dirname to the length of 100
-                f = f[:100]
+                #f = f[:100]
                 fold.append(f)
         folders   = fold
         fold      = []
@@ -354,10 +359,10 @@ class Chomik(object):
         """
         Tworzenie katalogu w katalogu o id = folder_id
         """
-        if len(dirname) > 100:
-            self.view.print_( "Dirname too long" )
-            self.view.print_( "Dirname shortened\r\n" )
-            dirname = dirname[:100]
+        #if len(dirname) > 100:
+        #    self.view.print_( "Dirname too long" )
+        #    self.view.print_( "Dirname shortened\r\n" )
+        #    #dirname = dirname[:100]
         self.relogin()
         if folder_id == None:
             folder_id = self.folder_id
