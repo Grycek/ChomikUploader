@@ -94,9 +94,6 @@ def unescape_name(text):
     text = text.replace("&gt;", ">")
     text = text.replace("&amp;", "&")
     return text
-    
-
-
 
 #####################################################################################################
 class ChomikException(Exception):
@@ -442,10 +439,20 @@ class Chomik(object):
         if token == None:
             return False
         else:
-            result = self.__upload(filepath, filename, token, stamp, server, port)
+            result = self.__upload_with_resume_option( filepath, filename, token, stamp, server, port)
             if result == True:
                 self.model.remove_notuploaded(filepath)
             return result
+        
+    def __upload_with_resume_option(self, filepath, filename, token, stamp, server, port):
+        try:
+            result = self.__upload(filepath, filename, token, stamp, server, port)
+        except (socket.error, socket.timeout), e:
+            self.view.print_("Wznawianie\n")
+            result = self.resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+        return result
+            
+            
 
 
     def __upload_get_tokens(self, filepath, filename):
@@ -577,10 +584,18 @@ class Chomik(object):
         self.folder_id = folder_id
         filename_tmp   = change_coding(filename)        
         filesize_sent = self.__resume_get_tokens(filepath, filename_tmp, token, server, port)
-        if filesize_sent == False:
+        if filesize_sent == False or token == None:
             return False
         else:
-            return self.__resume(filepath, filename_tmp, token, server, port, stamp, filesize_sent)
+            return self.__resume_with_resume_option(filepath, filename, token, server, port, stamp, filesize_sent)
+    
+    def __resume_with_resume_option(self, filepath, filename, token, server, port, stamp, filesize_sent):
+        try:
+            result = self.__resume(filepath, filename, token, server, port, stamp, filesize_sent)
+        except (socket.error, socket.timeout), e:
+            self.view.print_("Wznawianie\n")
+            result = self.resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+        return result
 
 
     def __resume_get_tokens(self, filepath, filename, token, server, port):
