@@ -439,17 +439,17 @@ class Chomik(object):
         if token == None:
             return False
         else:
-            result = self.__upload_with_resume_option( filepath, filename, token, stamp, server, port)
+            result = self.__upload_with_resume_option( filepath, filename, token, stamp, server, port, self.chomik_id, self.folder_id)
             if result == True:
                 self.model.remove_notuploaded(filepath)
             return result
         
-    def __upload_with_resume_option(self, filepath, filename, token, stamp, server, port):
+    def __upload_with_resume_option(self, filepath, filename, token, stamp, server, port, chomik_id, folder_id):
         try:
             result = self.__upload(filepath, filename, token, stamp, server, port)
         except (socket.error, socket.timeout), e:
             self.view.print_("Wznawianie\n")
-            result = self.resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+            result = self.resume(filepath, filename, folder_id, chomik_id, token, server, port, stamp)
         return result
             
             
@@ -587,14 +587,14 @@ class Chomik(object):
         if filesize_sent == False or token == None:
             return False
         else:
-            return self.__resume_with_resume_option(filepath, filename, token, server, port, stamp, filesize_sent)
+            return self.__resume_with_resume_option(filepath, filename, token, server, port, stamp, filesize_sent, chomik_id, folder_id)
     
-    def __resume_with_resume_option(self, filepath, filename, token, server, port, stamp, filesize_sent):
+    def __resume_with_resume_option(self, filepath, filename, token, server, port, stamp, filesize_sent, chomik_id, folder_id):
         try:
             result = self.__resume(filepath, filename, token, server, port, stamp, filesize_sent)
         except (socket.error, socket.timeout), e:
             self.view.print_("Wznawianie\n")
-            result = self.resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
+            result = self.resume(filepath, filename, folder_id, chomik_id, token, server, port, stamp)
         return result
 
 
