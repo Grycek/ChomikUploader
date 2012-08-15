@@ -203,6 +203,8 @@ class Chomik(object):
             ses_id    = resp_dict['s:Envelope']['s:Body']['AuthResponse']['AuthResult']['a:token'] 
             self.ses_id    = ses_id
             self.chomik_id = chomik_id
+            if self.ses_id == "-1" or self.chomik_id == "-1":
+                return False 
         except IndexError, e:
             self.view.print_( "Blad(relogin):" )
             self.view.print_( e )
@@ -307,7 +309,8 @@ class Chomik(object):
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
             if type(list_of_subfolders) == dict:
                 list_of_subfolders = [list_of_subfolders]
-            name = to_unicode(f)
+            name = self.__dirname_refinement(f)
+            name = to_unicode(name)
             if name in [unescape_name(i.get("name","")) for i in list_of_subfolders ]:
                 for i in list_of_subfolders:
                     if name == unescape_name(i.get("name","")):
@@ -329,7 +332,8 @@ class Chomik(object):
             list_of_subfolders = dom.get('folders', {}).get('FolderInfo', {})
             if type(list_of_subfolders) == dict:
                 list_of_subfolders = [list_of_subfolders]
-            name = to_unicode(f)
+            name = self.__dirname_refinement(f)
+            name = to_unicode(name)
             if name in [unescape_name(i.get("name","")) for i in list_of_subfolders ]:
                 for i in list_of_subfolders:
                     if name == unescape_name(i.get("name","")):
@@ -340,7 +344,7 @@ class Chomik(object):
                         #self.view.print_( folder_id, f )
             else:
                 #TODO: update self.folder_dom
-                self.mkdir(f, folder_id)
+                self.mkdir(name, folder_id)
                 self.get_dir_list(folder_id, dom)
                 result, dom, folder_id = self.__access_node(fold + [f])
                 #jezeli nie udalo sie ani utworzyc ani przejsc, to zwroc False
@@ -351,7 +355,23 @@ class Chomik(object):
         return (True,dom, folder_id)
     
 
-
+    def __dirname_refinement(self, dirname):
+        """
+        Usuwa niedozwolone znaki z nazwy katalogu
+        """
+        dirname = to_unicode(dirname)[:256]
+        #\ / : * ? " < > |.
+        not_allowed = ["\\", "/", ":", "*", "?", '"', "<", ">", "|"]
+        for ch in not_allowed:
+            if ch in dirname:
+                dirname = dirname.replace(ch,"")
+        if dirname.startswith("."):
+            dirname = dirname[1:]
+        if dirname.endswith("."):
+            dirname = dirname[:-1]         
+        dirname = dirname.encode('utf8')
+        return dirname
+    
     def mkdir(self, dirname, folder_id = None):
         """
         Tworzenie katalogu w katalogu o id = folder_id
@@ -359,7 +379,8 @@ class Chomik(object):
         #if len(dirname) > 100:
         #    self.view.print_( "Dirname too long" )
         #    self.view.print_( "Dirname shortened\r\n" )
-        #    #dirname = dirname[:100]
+        #    dirname = to_unicode(dirname).encode("utf8")
+        dirname = self.__dirname_refinement(dirname)
         self.relogin()
         if folder_id == None:
             folder_id = self.folder_id
