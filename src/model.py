@@ -11,7 +11,18 @@ import os
 import threading
 import re
 import view
+import sys
 
+
+def change_coding(text):
+    try:
+        if type(text) == unicode:
+          text = text.encode('utf-8')  
+        elif sys.platform.startswith('win'):
+          text = text.decode('cp1250').encode('utf-8')
+    except Exception, e:
+        print e
+    return text
 
 def singleton(cls):
     instances = {}
@@ -63,6 +74,7 @@ class Model(object):
         
     
     def _aux_remove_notuploaded_resume(self, filepath):
+        filepath = change_coding(filepath)
         it = 0
         while it < len(self.notuploaded_resume):
             i = self.notuploaded_resume[it]
@@ -71,6 +83,7 @@ class Model(object):
             it += 1
             
     def _aux_remove_notuploaded_normal(self, filepath):
+        filepath = change_coding(filepath)
         it = 0
         while it < len(self.notuploaded_normal):
             i = self.notuploaded_normal[it]
@@ -79,6 +92,7 @@ class Model(object):
             it += 1
             
     def _aux_remove_pending(self, filepath):
+        filepath = change_coding(filepath)
         it = 0
         while it < len(self.pending):
             i = self.pending[it]
@@ -91,11 +105,13 @@ class Model(object):
         Dodawanie informacji o filepath na liscie notuploaded i w pliku notuploaded.txt
         """
         self.lock.acquire()
+        filepath = change_coding(filepath)
         try:
             if not filepath in self.notuploaded_normal:
                 self.notuploaded_normal.append(filepath)
                 f = open(self.notuploaded_file_name,'a')
-                f.write(filepath + '\r\n')
+                f.write( filepath )
+                f.write('\r\n')
                 f.close()
         finally:
             self.lock.release()
@@ -105,6 +121,7 @@ class Model(object):
         Dodawanie informacji o filepath i danych do wznawiania na liscie notuploaded i w pliku notuploaded.txt
         """
         self.lock.acquire()
+        filepath = change_coding(filepath)
         try:
             #FIXME:danger
             self._aux_remove_notuploaded_resume(filepath)
@@ -112,8 +129,8 @@ class Model(object):
             self._save_notuploaded()
             self.notuploaded_resume.append( (filepath, filename, folder_id, chomik_id, token, host, port, stamp) )
             f = open(self.notuploaded_file_name,'a')
-            f.write(filepath + '\t')
-            f.write(filename + '\t')
+            f.write(change_coding(filepath) + '\t')
+            f.write(change_coding(filename) + '\t')
             f.write(str(folder_id) + '\t')
             f.write(str(chomik_id) + '\t')
             f.write(str(token) + '\t')
@@ -130,6 +147,7 @@ class Model(object):
         Usuwanie filepath z listy notuploaded i z pliku notuploaded.txt
         """
         self.lock.acquire()
+        filepath = change_coding(filepath)
         try:
             #FIXME:danger
             self._aux_remove_notuploaded_resume(filepath)
@@ -145,10 +163,10 @@ class Model(object):
         f = open(self.notuploaded_file_name,'w')
         for nu in self.notuploaded_resume:
             l = [ str(i) for i in list(nu)]
-            f.write( '\t'.join(l) )
+            f.write( change_coding('\t'.join(l)) )
             f.write( '\r\n' )
         for nu in self.notuploaded_normal:
-            f.write( nu )
+            f.write( change_coding(nu) )
             f.write( '\r\n' )
         f.close()
 
@@ -165,6 +183,7 @@ class Model(object):
         Dodanie filepath do listy plikow poprawnie wyslanych
         """
         self.lock.acquire()
+        filepath = change_coding(filepath)
         try:
             self.uploaded.add(filepath)
             f = open(self.uploaded_file_name,'a')
@@ -179,6 +198,7 @@ class Model(object):
         Sprawdzanie, czy plik znajduje sie na liscie plikow wyslanych
         """
         self.lock.acquire()
+        filepath = change_coding(filepath)
         try:
             result = filepath in self.uploaded
         finally:
