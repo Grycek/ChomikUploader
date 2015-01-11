@@ -57,7 +57,7 @@ class Model(object):
         f.close()
         #TODO: tu stanowczo jakis test zrobic
         if not os.path.exists(self.notuploaded_file_name):
-        	open(self.notuploaded_file_name,"w")
+        	open(self.notuploaded_file_name,"w").close()
         f     = open(self.notuploaded_file_name,"r")
         files = [ i.strip() for i in f.readlines()]
         f.close()

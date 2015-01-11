@@ -5,7 +5,7 @@ import os
 if sys.platform.startswith('win'):
     import py2exe
     
-setup(name='chomikUploader',
+setup(name='chomikUploader_es',
           version='0.5.1',
           author='adam_gr',
           author_email='adam_gr [at] gazeta.pl',

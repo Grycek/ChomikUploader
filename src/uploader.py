@@ -9,7 +9,7 @@
 # Ver: 0.5
 
 import view
-from chomikbox import *
+from chomikbox_es import *
 import getpass
 import re
 import traceback

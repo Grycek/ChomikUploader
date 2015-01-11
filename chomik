@@ -3,7 +3,7 @@
 
 
 try:
-    import chomikuploader.main
+    import chomikuploader_es.main
     #raise ImportError
 except ImportError, e:
     import src.main
