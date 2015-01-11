@@ -24,6 +24,34 @@ import time
 import cgi
 ##################
 from soap import SOAP
+
+
+def debug_fun(tb):
+    """
+    tb = traceback
+    """
+    v  = view.View()
+    st    = traceback.format_tb(tb)
+    stack = []
+    while tb:
+        stack.append(tb.tb_frame)
+        tb = tb.tb_next
+    #traceback.print_exc()
+    v.print_( "-"*10 )
+    v.print_( ''.join(st) )
+    v.print_( "Locals by frame, innermost last" )
+    for frame in stack:
+        v.print_()
+        v.print_( "Frame %s in %s at line %s" % (frame.f_code.co_name,
+                                             frame.f_code.co_filename,
+                                             frame.f_lineno) )
+        for key, value in frame.f_locals.items():
+            try:
+               v.print_( "\t%20s = " % key, value)
+            except:
+                v.print_( "<ERROR WHILE PRINTING VALUE>" )
+    v.print_( "-"*10 )
+
 ###########################################################
 import htmlentitydefs, re
 
@@ -56,7 +84,7 @@ def unescape(string):
     else:
         return result
 ###########################################################
-glob_timeout = 240
+glob_timeout = 60
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
 #login_ip   = "main.box.chomikuj.pl"
@@ -540,8 +568,11 @@ class Chomik(object):
                 chunk = f.read(1024)
                 if not chunk:
                     break
+                #self.view.print_( 'Sending Chunk: ' + str(len(chunk)) )
                 sock.send(chunk)
+                #self.view.print_( 'Chunk sent' )
                 pb.update(len(chunk))
+                #self.view.print_( 'Updating progressbar' )
                 now = time.time()
                 if now - last_time > 0.5:
                     self.view.update_progress_bars()
@@ -549,6 +580,14 @@ class Chomik(object):
             f.close()        
             #self.view.print_( 'Sending tail' )
             sock.send(contenttail)
+        except Exception, e:
+            self.view.print_( 'Blad:' )
+            self.view.print_( e )
+            if True:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
+            self.view.print_( 'Blad 561' )
+            raise e
         finally:
             self.view.update_progress_bars()
             self.view.delete_progress_bar(pb)

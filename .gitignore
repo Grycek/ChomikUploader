@@ -1,0 +1,10 @@
+build
+dist
+oldtest
+test
+*.pyc
+*~
+src/depricated
+src/tmp_dir
+*uploaded.txt
+TODO
