@@ -1,5 +1,5 @@
 build
-dist
+dist_old
 oldtest
 test
 *.pyc
