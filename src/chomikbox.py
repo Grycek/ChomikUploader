@@ -149,7 +149,7 @@ class ChomikException(Exception):
 #####################################################################################################
 #TODO: zmienic cos z kodowaniem
 class Chomik(object):
-    def __init__(self, view_ = None, model_ = None):
+    def __init__(self, view_ = None, model_ = None, debug = False):
         if view_ == None:
             self.view    = view.View()
         else:
@@ -169,6 +169,7 @@ class Chomik(object):
         self.user          = ''
         self.password      = ''
         self.last_login    = 0
+        self.debug         = debug
 
 
     def send(self, content):
@@ -581,13 +582,10 @@ class Chomik(object):
             #self.view.print_( 'Sending tail' )
             sock.send(contenttail)
         except Exception, e:
-            self.view.print_( 'Blad:' )
-            self.view.print_( e )
-            if True:
-                trbck = sys.exc_info()[2]
-                debug_fun(trbck)
-            self.view.print_( 'Blad 561' )
-            raise e
+        	if self.debug:
+        	    trbck = sys.exc_info()[2]
+        	    debug_fun(trbck)
+        	raise e
         finally:
             self.view.update_progress_bars()
             self.view.delete_progress_bar(pb)
@@ -721,6 +719,11 @@ class Chomik(object):
                     last_time = now
             f.close()        
             sock.send(contenttail)
+        except Exception, e:
+            if self.debug:
+                trbck = sys.exc_info()[2]
+                debug_fun(trbck)
+            raise e
         finally:
             self.view.update_progress_bars()
             self.view.delete_progress_bar(pb)

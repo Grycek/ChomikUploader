@@ -48,9 +48,9 @@ def debug_fun(tb):
 
 #############################
 class UploaderThread(threading.Thread):
-    def __init__(self, user, password, chomikpath, dirpath, view_, model_):
+    def __init__(self, user, password, chomikpath, dirpath, view_, model_, debug=False):
         threading.Thread.__init__(self)
-        self.uploader   = Uploader(user, password, view_, model_)
+        self.uploader   = Uploader(user, password, view_, model_, debug)
         self.chomikpath = chomikpath
         self.dirpath    = dirpath
         self.daemon     = True
@@ -75,7 +75,7 @@ class Uploader(object):
         self.password         = password
         self.notuploaded_file = 'notuploaded.txt'
         self.uploaded_file    = 'uploaded.txt'
-        self.chomik = Chomik(self.view, self.model)
+        self.chomik = Chomik(self.view, self.model, debug=self.debug)
         if self.user == None:
             self.user     = raw_input('Podaj nazwe uzytkownika:\n')
         if self.password == None:
@@ -120,6 +120,7 @@ class Uploader(object):
         finally:
             lock.release()
         self.__upload_aux(dirpath)
+        self.resume()
 
 
     
@@ -158,8 +159,7 @@ class Uploader(object):
         try:
             result = self.chomik.upload(filepath, os.path.basename(filepath))
         except Exception, e:
-            self.view.print_( 'Blad:' )
-            self.view.print_( e )
+            self.view.print_( 'Blad:', e )
             self.view.print_( 'Blad. Plik ',filepath, ' nie zostal wyslany\r\n' )
             if self.debug:
                 trbck = sys.exc_info()[2]
@@ -221,8 +221,7 @@ class Uploader(object):
         try:
             result = self.chomik.resume(filepath, filename, folder_id, chomik_id, token, host, port, stamp)
         except Exception, e:
-            self.view.print_( 'Blad:' )
-            self.view.print_( e )
+            self.view.print_( 'Blad:', e)
             if self.debug:
                 trbck = sys.exc_info()[2]
                 debug_fun(trbck)
@@ -257,7 +256,7 @@ class Uploader(object):
         #########################
         th = []
         for i in xrange(n):
-            upl = UploaderThread(self.user, self.password, chomikpath, dirpath, view_ = self.view, model_ = self.model)
+            upl = UploaderThread(self.user, self.password, chomikpath, dirpath, view_ = self.view, model_ = self.model, debug = self.debug)
             upl.start()
         while threading.active_count() > 1:
             time.sleep(1.)
