@@ -620,9 +620,9 @@ class Chomik(object):
         contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
         contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
         
-        contenttail   = "\r\n" + boundary + '--\r\n'
+        contenttail   = "\r\n" + boundary + '--\r\n\r\n'
         
-        contentlength = len(contentheader) + size + len(contenttail)
+        contentlength = len(contentheader) + (size + 0) + len(contenttail)
 
         header   = "POST /file/ HTTP/1.1\r\n"
         header  += "Content-Type: multipart/mixed; boundary={0}\r\n".format(boundary[2:])
@@ -642,7 +642,9 @@ class Chomik(object):
         self.folder_id = folder_id
         filename_tmp   = change_coding(filename)        
         filesize_sent = self.__resume_get_tokens(filepath, filename_tmp, token, server, port)
-        if filesize_sent == False or token == None:
+        print "Filesize", filesize_sent
+        print "Token", token
+        if (type(filesize_sent) != int and filesize_sent == False) or token == None:
             return False
         else:
             return self.__resume_with_resume_option(filepath, filename, token, server, port, stamp, filesize_sent, chomik_id, folder_id)
