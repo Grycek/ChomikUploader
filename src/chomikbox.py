@@ -84,7 +84,7 @@ def unescape(string):
     else:
         return result
 ###########################################################
-glob_timeout = 60
+glob_timeout = 20
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
 #login_ip   = "main.box.chomikuj.pl"
