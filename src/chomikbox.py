@@ -22,6 +22,7 @@ import traceback
 import model
 import time
 import cgi
+import random
 ##################
 from soap import SOAP
 
@@ -91,6 +92,8 @@ glob_timeout = 20
 login_ip   = "box.chomikuj.pl"
 #login_port = 8083
 login_port = 80
+version = "2.0.5"
+client = "ChomikBox-" + version
 
 
 def change_coding(text):
@@ -208,11 +211,12 @@ class Chomik(object):
             return True
         self.last_login = time.time()
         password = hashlib.md5(self.password).hexdigest()
-        xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version','2.0.4.3') ]) ])]
+        xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version',version) ]) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Auth").strip()
         xml_len = len(xml_content)
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Auth\r\n"""
+        #header += """Content-Encoding: identity\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
@@ -534,6 +538,7 @@ class Chomik(object):
             self.token  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:key']
             self.stamp  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:stamp']
             self.server = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:server']
+            self.locale = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:locale']
             self.server, _, self.port = self.server.partition(":")
             return self.token, self.stamp, self.server, self.port
         except IndexError, e:
@@ -564,11 +569,16 @@ class Chomik(object):
         pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = 0, name = filepath)
         self.view.add_progress_bar(pb)
         last_time = time.time()
+        #g = open("log_upload" + filename + ".txt", "w")
+        #time.sleep(random.random()*10)
+        #g.write(header)
+        #g.close()
         try:
             while True:
                 chunk = f.read(1024)
                 if not chunk:
                     break
+                #g.write(chunk)
                 #self.view.print_( 'Sending Chunk: ' + str(len(chunk)) )
                 sock.send(chunk)
                 #self.view.print_( 'Chunk sent' )
@@ -611,24 +621,29 @@ class Chomik(object):
     
     def __create_header(self, server, port, token, stamp, filename, size, resume_from = 0):
         #FIXME: - cos krotki ten boundary
-        boundary = "--!CHB" + str(int(time.time()))
+        #boundary = "--!CHB" + str(int(time.time()))
+        boundary = "--!CHB" + stamp
         
         contentheader  = boundary + '\r\nname="chomik_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.chomik_id)
         contentheader += boundary + '\r\nname="folder_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.folder_id)
         contentheader += boundary + '\r\nname="key"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(token)
         contentheader += boundary + '\r\nname="time"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(stamp)
-        contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
+        if resume_from > 0:
+        	contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
+        contentheader += boundary + '\r\nname="client"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(client)
+        contentheader += boundary + '\r\nname="locale"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format("PL")
+
         contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
         
         contenttail   = "\r\n" + boundary + '--\r\n\r\n'
         
-        contentlength = len(contentheader) + (size + 0) + len(contenttail)
+        contentlength = len(contentheader) + (size - 2) + len(contenttail)
 
-        header   = "POST /file/ HTTP/1.1\r\n"
+        header   = "POST /file/ HTTP/1.0\r\n"
         header  += "Content-Type: multipart/mixed; boundary={0}\r\n".format(boundary[2:])
-        header  += "Connection: close\r\n"
+        #header  += "Connection: close\r\n"
         header  += "Host: {0}:{1}\r\n".format(server,port)
-        header  += "Content-Length: {0}\r\n\r\n\r\n".format(contentlength)
+        header  += "Content-Length: {0}\r\n\r\n".format(contentlength)
         pass
         header += contentheader
         
@@ -708,6 +723,9 @@ class Chomik(object):
         pb = view.ProgressBar(total=size, rate_refresh = 0.5, count = filesize_sent, name = filepath)
         self.view.add_progress_bar(pb)
         last_time = time.time()
+        #g = open("log_resume" + filename + ".txt", "w")
+        #g.write(header)
+        #g.close()
         try:
             while True:
                 chunk = f.read(1024)

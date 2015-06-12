@@ -182,6 +182,8 @@ class ProgressBar(object):
         self.name        = name
         # Number of units to process
         self.total       = total
+        if self.total == 0:
+        	self.total = 1
         # Refresh rate in seconds
         self.rate_refresh = rate_refresh
         
