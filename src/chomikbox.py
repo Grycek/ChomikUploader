@@ -84,13 +84,15 @@ def unescape(string):
     else:
         return result
 ###########################################################
-glob_timeout = 60
+glob_timeout = 20
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
 #login_ip   = "main.box.chomikuj.pl"
 login_ip   = "box.chomikuj.pl"
 #login_port = 8083
 login_port = 80
+version = "2.0.5"
+client = "ChomikBox-" + version
 
 
 def change_coding(text):
@@ -208,11 +210,12 @@ class Chomik(object):
             return True
         self.last_login = time.time()
         password = hashlib.md5(self.password).hexdigest()
-        xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version','2.0.4.3') ]) ])]
+        xml_dict = xml_dict = [('ROOT',[('name' , self.user), ('passHash', password), ('ver' , '4'), ('client',[('name','chomikbox'),('version',version) ]) ])]
         xml_content = self.soap.soap_dict_to_xml(xml_dict, "Auth").strip()
         xml_len = len(xml_content)
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Auth\r\n"""
+        #header += """Content-Encoding: identity\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
@@ -534,6 +537,7 @@ class Chomik(object):
             self.token  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:key']
             self.stamp  = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:stamp']
             self.server = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:server']
+            self.locale = resp_dict['s:Envelope']['s:Body']['UploadTokenResponse']['UploadTokenResult']['a:locale']
             self.server, _, self.port = self.server.partition(":")
             return self.token, self.stamp, self.server, self.port
         except IndexError, e:
@@ -611,24 +615,28 @@ class Chomik(object):
     
     def __create_header(self, server, port, token, stamp, filename, size, resume_from = 0):
         #FIXME: - cos krotki ten boundary
-        boundary = "--!CHB" + str(int(time.time()))
+        #boundary = "--!CHB" + str(int(time.time()))
+        boundary = "--!CHB" + stamp
         
         contentheader  = boundary + '\r\nname="chomik_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.chomik_id)
         contentheader += boundary + '\r\nname="folder_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.folder_id)
         contentheader += boundary + '\r\nname="key"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(token)
         contentheader += boundary + '\r\nname="time"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(stamp)
-        contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
+        if resume_from > 0:
+            contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
+        contentheader += boundary + '\r\nname="client"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(client)
+        contentheader += boundary + '\r\nname="locale"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format("PL")
         contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
         
-        contenttail   = "\r\n" + boundary + '--\r\n'
+        contenttail   = "\r\n" + boundary + '--\r\n\r\n'
         
-        contentlength = len(contentheader) + size + len(contenttail)
+        contentlength = len(contentheader) + (size - 2) + len(contenttail)
 
-        header   = "POST /file/ HTTP/1.1\r\n"
+        header   = "POST /file/ HTTP/1.0\r\n"
         header  += "Content-Type: multipart/mixed; boundary={0}\r\n".format(boundary[2:])
-        header  += "Connection: close\r\n"
+        #header  += "Connection: close\r\n"
         header  += "Host: {0}:{1}\r\n".format(server,port)
-        header  += "Content-Length: {0}\r\n\r\n\r\n".format(contentlength)
+        header  += "Content-Length: {0}\r\n\r\n".format(contentlength)
         pass
         header += contentheader
         
@@ -642,7 +650,10 @@ class Chomik(object):
         self.folder_id = folder_id
         filename_tmp   = change_coding(filename)        
         filesize_sent = self.__resume_get_tokens(filepath, filename_tmp, token, server, port)
-        if filesize_sent == False or token == None:
+        if (filesize_sent == -1) or token == None:
+            if self.debug:
+                self.view.print_( "Resume ", filename_tmp )
+                self.view.print_( "Filesize sent", filesize_sent )
             return False
         else:
             return self.__resume_with_resume_option(filepath, filename, token, server, port, stamp, filesize_sent, chomik_id, folder_id)
@@ -650,6 +661,7 @@ class Chomik(object):
     def __resume_with_resume_option(self, filepath, filename, token, server, port, stamp, filesize_sent, chomik_id, folder_id):
         try:
             result = self.__resume(filepath, filename, token, server, port, stamp, filesize_sent)
+            self.view.print_( "Result", result )
         except (socket.error, socket.timeout), e:
             self.view.print_("Wznawianie\n")
             result = self.resume(filepath, filename, folder_id, chomik_id, token, server, port, stamp)
@@ -683,7 +695,7 @@ class Chomik(object):
         except IndexError, e:
             self.view.print_( "Nie mozna bylo wznowic pobierania" )
             self.view.print_( resp )
-            return False
+            return -1
         
 
 
