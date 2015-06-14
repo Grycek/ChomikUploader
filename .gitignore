@@ -8,3 +8,4 @@ src/depricated
 src/tmp_dir
 *uploaded.txt
 TODO
+hang_test.sh
