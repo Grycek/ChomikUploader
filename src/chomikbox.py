@@ -181,14 +181,19 @@ class Chomik(object):
         sock.connect( (login_ip, login_port) )
         sock.send(content)
         resp = ""
-        kRespSize = 640
+        kRespSize = 2056
         while True:
             tmp = sock.recv(kRespSize)
             resp   += tmp
             if tmp ==  '' or tmp.endswith("\r\n\r\n"):
                 break
         sock.close()
-        resp = re.findall("(\<.*?\>)[^\>]*$", resp)[0]
+        resp = resp.partition("\r\n\r\n")[2]
+        #resp = re.findall("(\<.*?\>)[^\>]*$", resp)[0]
+        _, _, resp = resp.partition("<")
+        resp = "<" + resp
+        resp,_,_ = resp.rpartition(">")
+        resp = resp + ">"
         return resp
                 
         
@@ -222,7 +227,7 @@ class Chomik(object):
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
-        #header += """Accept-Encoding: identity\r\n"""
+        header += """Accept-Encoding: identity\r\n"""
         header += """Accept-Language: pl-PL,en,*\r\n"""
         header += """User-Agent: Mozilla/5.0\r\n"""
         header += """Host: box.chomikuj.pl\r\n\r\n"""
