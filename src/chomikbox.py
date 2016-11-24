@@ -189,11 +189,13 @@ class Chomik(object):
                 break
         sock.close()
         resp = resp.partition("\r\n\r\n")[2]
-        #resp = re.findall("(\<.*?\>)[^\>]*$", resp)[0]
+        resp = re.sub("\r\n\w{1,10}\r\n", "", resp)
         _, _, resp = resp.partition("<")
         resp = "<" + resp
         resp,_,_ = resp.rpartition(">")
         resp = resp + ">"
+        l = len(resp)
+        seg = l/80
         return resp
                 
         
@@ -269,6 +271,7 @@ class Chomik(object):
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
+        header += """Accept-Encoding: identity\r\n"""
         header += """Accept-Language: pl-PL,en,*\r\n"""
         header += """User-Agent: Mozilla/5.0\r\n"""
         header += """Host: box.chomikuj.pl\r\n\r\n"""
