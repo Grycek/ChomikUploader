@@ -194,8 +194,6 @@ class Chomik(object):
         resp = "<" + resp
         resp,_,_ = resp.rpartition(">")
         resp = resp + ">"
-        l = len(resp)
-        seg = l/80
         return resp
                 
         
