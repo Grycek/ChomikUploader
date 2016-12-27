@@ -508,7 +508,7 @@ class Chomik(object):
         filename_tmp               = change_coding(filename)
         filename_tmp               = escape_name(filename_tmp)
         self.model.add_notuploaded_normal(filepath)
-        token, stamp, server, port = self.__upload_get_tokens(filepath, filename_tmp)
+        token, stamp, server, port = self.__upload_get_tokens(filepath, filename)
         #saving information for resuming
         self.model.add_notuploaded_resume(filepath, filename, self.folder_id, self.chomik_id, token, server, port, stamp)
         if token == None:
@@ -678,7 +678,7 @@ class Chomik(object):
         self.chomik_id = chomik_id
         self.folder_id = folder_id
         filename_tmp   = change_coding(filename)        
-        filesize_sent = self.__resume_get_tokens(filepath, filename_tmp, token, server, port)
+        filesize_sent = self.__resume_get_tokens(filepath, filename, token, server, port)
         if (filesize_sent == -1) or token == None:
             if self.debug:
                 self.view.print_( "Resume ", filename_tmp )
