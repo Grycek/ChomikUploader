@@ -153,6 +153,8 @@ class ChomikException(Exception):
 #TODO: zmienic cos z kodowaniem
 class Chomik(object):
     def __init__(self, view_ = None, model_ = None, debug = False):
+    	#reload(sys)
+    	#sys.setdefaultencoding('utf8')
         if view_ == None:
             self.view    = view.View()
         else:
@@ -183,7 +185,6 @@ class Chomik(object):
         sock.send(content)
         resp = ""
         kRespSize = 2056
-
         while True:
             tmp = sock.recv(kRespSize)
             resp   += tmp
@@ -646,7 +647,7 @@ class Chomik(object):
         #boundary = "--!CHB" + str(int(time.time()))
         boundary = "--!CHB" + stamp
         
-        contentheader  = boundary + '\r\nname="chomik_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.chomik_id)
+        contentheader = boundary + '\r\nname="chomik_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.chomik_id)
         contentheader += boundary + '\r\nname="folder_id"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(self.folder_id)
         contentheader += boundary + '\r\nname="key"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(token)
         contentheader += boundary + '\r\nname="time"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(stamp)
@@ -654,7 +655,8 @@ class Chomik(object):
         	contentheader += boundary + '\r\nname="resume_from"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(resume_from)
         contentheader += boundary + '\r\nname="client"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format(client)
         contentheader += boundary + '\r\nname="locale"\r\nContent-Type: text/plain\r\n\r\n{0}\r\n'.format("PL")
-        contentheader += boundary + '\r\nname="file"; filename="{0}"\r\n\r\n'.format(filename)
+        tmp = unicode('\r\nname="file"; filename="{0}"\r\n\r\n', "utf8").format(filename.decode("utf8"))
+        contentheader += boundary + tmp
         
         contenttail   = "\r\n" + boundary + '--\r\n\r\n'
         
@@ -665,10 +667,9 @@ class Chomik(object):
         #header  += "Connection: close\r\n"
         header  += "Host: {0}:{1}\r\n".format(server,port)
         header  += "Content-Length: {0}\r\n\r\n".format(contentlength)
-        pass
-        header += contentheader
+        header  += contentheader
         
-        return header, contenttail
+        return header.encode("utf8"), contenttail
     
     
 #####################################################    
