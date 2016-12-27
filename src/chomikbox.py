@@ -173,6 +173,7 @@ class Chomik(object):
         self.password      = ''
         self.last_login    = 0
         self.debug         = debug
+        self.cookie        = ''
 
 
     def send(self, content):
@@ -182,12 +183,16 @@ class Chomik(object):
         sock.send(content)
         resp = ""
         kRespSize = 2056
+
         while True:
             tmp = sock.recv(kRespSize)
             resp   += tmp
-            if tmp ==  '' or tmp.endswith("\r\n\r\n"):
+            #if tmp ==  '' or tmp.endswith("\r\n\r\n"):
+            if tmp.endswith("\r\n\r\n") and resp.count("\r\n\r\n") >= 2 or tmp == '':
                 break
         sock.close()
+        if "Set-Cookie: __cfduid=" in resp:
+            self.cookie = re.findall("Set-Cookie: __cfduid=([^;]*)", resp)[0]
         resp = resp.partition("\r\n\r\n")[2]
         resp = re.sub("\r\n\w{1,10}\r\n", "", resp)
         _, _, resp = resp.partition("<")
@@ -267,6 +272,8 @@ class Chomik(object):
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/Folders\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        if self.cookie != '':
+            header += """Cookie: __cfduid={0}\r\n""".format(self.cookie)
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
         header += """Accept-Encoding: identity\r\n"""
@@ -437,6 +444,8 @@ class Chomik(object):
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/AddFolder\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        if self.cookie != '':
+            header += """Cookie: __cfduid={0}\r\n""".format(self.cookie)
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
         header += """Accept-Language: pl-PL,en,*\r\n"""
@@ -471,6 +480,8 @@ class Chomik(object):
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/RemoveFolder\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        if self.cookie != '':
+            header += """Cookie: __cfduid={0}\r\n""".format(self.cookie)
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
         header += """Accept-Language: pl-PL,en,*\r\n"""
@@ -530,6 +541,8 @@ class Chomik(object):
         header  = """POST /services/ChomikBoxService.svc HTTP/1.1\r\n"""
         header += """SOAPAction: http://chomikuj.pl/IChomikBoxService/UploadToken\r\n"""
         header += """Content-Type: text/xml;charset=utf-8\r\n"""
+        if self.cookie != '':
+            header += """Cookie: __cfduid={0}\r\n""".format(self.cookie)
         header += """Content-Length: %d\r\n""" % xml_len
         header += """Connection: Keep-Alive\r\n"""
         header += """Accept-Language: pl-PL,en,*\r\n"""
