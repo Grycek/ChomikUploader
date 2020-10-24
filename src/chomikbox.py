@@ -85,14 +85,14 @@ def unescape(string):
     else:
         return result
 ###########################################################
-glob_timeout = 20
+glob_timeout = 35
 #KONFIGURACJA
 #login_ip   = "208.43.223.12"
 #login_ip   = "main.box.chomikuj.pl"
 login_ip   = "box.chomikuj.pl"
 #login_port = 8083
 login_port = 80
-version = "2.0.8.1"
+version = "2.0.8.2"
 client = "ChomikBox-" + version
 
 
@@ -179,28 +179,35 @@ class Chomik(object):
 
 
     def send(self, content):
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(glob_timeout)
-        sock.connect( (login_ip, login_port) )
-        sock.send(content)
-        resp = ""
-        kRespSize = 2056
-        while True:
-            tmp = sock.recv(kRespSize)
-            resp   += tmp
-            #if tmp ==  '' or tmp.endswith("\r\n\r\n"):
-            if tmp.endswith("\r\n\r\n") and resp.count("\r\n\r\n") >= 2 or tmp == '':
-                break
-        sock.close()
-        if "Set-Cookie: __cfduid=" in resp:
-            self.cookie = re.findall("Set-Cookie: __cfduid=([^;]*)", resp)[0]
-        resp = resp.partition("\r\n\r\n")[2]
-        resp = re.sub("\r\n\w{1,10}\r\n", "", resp)
-        _, _, resp = resp.partition("<")
-        resp = "<" + resp
-        resp,_,_ = resp.rpartition(">")
-        resp = resp + ">"
-        return resp
+        counter=0
+        while counter < 100:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(glob_timeout)
+                sock.connect( (login_ip, login_port) )
+                sock.send(content)
+                resp = ""
+                kRespSize = 2056
+                while True:
+                    tmp = sock.recv(kRespSize)
+                    resp   += tmp
+                    #if tmp ==  '' or tmp.endswith("\r\n\r\n"):
+                    if tmp.endswith("\r\n\r\n") and resp.count("\r\n\r\n") >= 2 or tmp == '':
+                        break
+                sock.close()
+                if "Set-Cookie: __cfduid=" in resp:
+                    self.cookie = re.findall("Set-Cookie: __cfduid=([^;]*)", resp)[0]
+                resp = resp.partition("\r\n\r\n")[2]
+                resp = re.sub("\r\n\w{1,10}\r\n", "", resp)
+                _, _, resp = resp.partition("<")
+                resp = "<" + resp
+                resp,_,_ = resp.rpartition(">")
+                resp = resp + ">"
+                return resp
+            except socket.error as error:
+                self.view.print_("Nieudane polaczenie: "+str(error))
+                self.view.print_("Proba "+str(counter)+" z 100")
+                counter += 1
                 
         
     def login(self, user, password):
